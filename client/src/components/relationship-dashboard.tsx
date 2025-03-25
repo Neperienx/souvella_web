@@ -39,9 +39,12 @@ export default function RelationshipDashboard({ userId }: RelationshipDashboardP
       <div className="paper-clip"></div>
       <div className="tape w-32 -left-6 top-10 rotate-12"></div>
       
-      <h2 className="font-serif text-2xl mb-4 text-center">Welcome to Memory Jar</h2>
-      <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
-        Create or join a relationship to start sharing memories
+      <h2 className="font-serif text-2xl mb-2 text-center">Welcome to Memory Jar</h2>
+      <p className="font-script text-xl text-center mb-2 text-[var(--charcoal)]/80">
+        Your digital memory scrapbook
+      </p>
+      <p className="text-center mb-6 text-[var(--charcoal)]/70">
+        Create a new relationship or join an existing one using your partner's invite code to start sharing daily memories together.
       </p>
       
       <div className="space-y-6">
@@ -101,11 +104,33 @@ export default function RelationshipDashboard({ userId }: RelationshipDashboardP
         )}
         
         <div className="bg-[var(--cream)]/50 p-4 rounded-xl">
-          <h3 className="font-serif text-lg mb-2">What is Memory Jar?</h3>
-          <p className="text-sm text-[var(--charcoal)]/80">
-            Memory Jar is a private, invite-only digital memory board for couples to share daily moments.
-            Create a new relationship or join your partner's by entering their invite code.
-          </p>
+          <h3 className="font-serif text-lg mb-2">How Memory Jar Works</h3>
+          <div className="space-y-3">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 w-6 h-6 bg-[var(--primary)]/20 rounded-full flex items-center justify-center mr-2">
+                <span className="font-medium text-sm">1</span>
+              </div>
+              <p className="text-sm text-[var(--charcoal)]/80">
+                Create or join a relationship to connect with your partner
+              </p>
+            </div>
+            <div className="flex items-start">
+              <div className="flex-shrink-0 w-6 h-6 bg-[var(--primary)]/20 rounded-full flex items-center justify-center mr-2">
+                <span className="font-medium text-sm">2</span>
+              </div>
+              <p className="text-sm text-[var(--charcoal)]/80">
+                Share one memory each day through text, photos, or voice notes
+              </p>
+            </div>
+            <div className="flex items-start">
+              <div className="flex-shrink-0 w-6 h-6 bg-[var(--primary)]/20 rounded-full flex items-center justify-center mr-2">
+                <span className="font-medium text-sm">3</span>
+              </div>
+              <p className="text-sm text-[var(--charcoal)]/80">
+                Build a timeline of your relationship that you can revisit anytime
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -59,7 +59,7 @@ export default function HomePage() {
         notifications={2} 
         photoURL={user?.photoURL || undefined}
         relationship={relationship}
-        onShowInvite={relationship ? showInviteModal : undefined}
+        onShowInvite={showInviteModal}
       />
       
       <main className="container mx-auto px-4 py-6">

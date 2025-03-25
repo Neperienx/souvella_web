@@ -62,11 +62,10 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
 
   const onSubmit = (data: MemoryFormValues) => {
     if (!relationshipId) {
-      // Create relationship first if none exists
-      createRelationship(userId);
       toast({
-        title: "Please set up a relationship first",
-        description: "Creating a relationship. You'll be able to upload memories once this is done.",
+        title: "No Relationship Found",
+        description: "You need to create or join a relationship before sharing memories.",
+        variant: "destructive",
       });
       return;
     }
@@ -90,6 +89,11 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       relationshipId,
       type: memoryType,
       content: data.content,
+    });
+    
+    toast({
+      title: "Memory Saved!",
+      description: "Your memory has been saved and added to your collection.",
     });
     
     // Reset form
