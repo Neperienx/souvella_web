@@ -1,0 +1,71 @@
+Refined Core Concept
+A private, invite-only digital memory board for couples where they can upload one memory per day (text, image, or audio). Each day, an algorithm randomly selects N past memories to be displayed, and both partners can react with a thumbs-up, increasing the chance of that memory being shown in the future.
+
+Updated Features & Functionality
+🔐 Privacy & Relationship Management
+Invite-Only Access: Each user can join one relationship via an invite link.
+
+Private Board: No one outside the relationship can see the content.
+
+Firebase Authentication: Google Sign-in or email/password login.
+
+📜 Memory Uploading (Once Per Day)
+Each partner can upload one memory per day (text, image, or audio).
+
+Memories are stored in Firebase Firestore & Storage.
+
+No editing or deleting after submission (to keep authenticity).
+
+🎲 Daily Memory Display Algorithm
+Every day, N memories are randomly selected and displayed.
+
+Memories with more thumbs-ups have a higher chance of appearing.
+
+This creates a nostalgic and emotional daily experience.
+
+👍 Reaction System (Thumbs-Up Boost)
+Both partners can react to the daily memories with a thumbs-up.
+
+More thumbs-ups = higher weight in the random selection process.
+
+Encourages partners to cherish and revisit special moments.
+
+📅 Long-Term Memory Curation
+Users can browse past memories via a timeline or calendar view.
+
+Possible filters (e.g., "Show only text memories," "Show anniversaries").
+
+📩 Notifications & Reminders
+Daily reminder: "Upload a memory today!"
+
+Morning notification: "Here are your daily memories 💖"
+
+Tech Stack
+Frontend (React + Firebase Hosting)
+React (or Next.js for better SEO & performance)
+
+Tailwind CSS for a cozy, minimal UI
+
+Backend & Database
+Firebase Authentication (Google Sign-In)
+
+Firestore (Memory storage & relationship management)
+
+Firebase Storage (Image/audio storage)
+
+Firebase Cloud Functions (For daily memory selection & notifications)
+
+Algorithm for Daily Memory Selection
+Fetch all memories from Firestore.
+
+Assign a weight based on thumbs-ups (e.g., +X% selection chance per thumbs-up).
+
+Randomly select N memories with a weighted distribution.
+
+Store/display the selected memories for the day.
+
+Aesthetic & Design Vibes 🎀
+🌸 Soft pastel colors & cute UI elements
+📜 Scrapbook or memory jar style (scroll through memories like flipping pages)
+🕰 Cozy, nostalgic animations (gentle fade-ins, floating hearts, etc.)
+💌 A love letter-like interface
