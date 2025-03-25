@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { auth } from "../lib/firebase";
+import { auth, handleRedirectResult } from "../lib/firebase";
 import { User } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -9,6 +9,26 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Handle redirect result
+  useEffect(() => {
+    const checkRedirectResult = async () => {
+      try {
+        const redirectUser = await handleRedirectResult();
+        // The redirect result will be handled by the auth state observer
+      } catch (error) {
+        console.error("Redirect sign-in error:", error);
+        toast({
+          title: "Authentication Error",
+          description: "There was an issue with the redirect sign-in. Please try again.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    checkRedirectResult();
+  }, [toast]);
+
+  // Auth state observer
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       try {

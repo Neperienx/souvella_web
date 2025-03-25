@@ -151,11 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid memory type" });
       }
       
-      // Check if user has already uploaded a memory today
-      const user = await storage.getUser(memoryData.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      // No need to check user existence here as we'll validate with the memories
       
       const today = new Date();
       const todaysMemories = await storage.getMemoriesByUserAndDate(memoryData.userId, today);

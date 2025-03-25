@@ -10,4 +10,81 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  
+  /* Import Google Fonts - this will complement our theme */
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700&display=swap');
+}
+
+@layer utilities {
+  /* Custom design system colors */
+  :root {
+    --cream: #F9F5F1;
+    --charcoal: #333333;
+    --primary: #E97777;
+    --primary-light: #FDCEDF;
+    --primary-dark: #B25068;
+    --secondary: #99C4C8;
+    --secondary-dark: #68A7AD;
+    --accent: #FFCC70;
+    --accent-dark: #FFB347;
+  }
+  
+  /* Font families */
+  .font-serif {
+    font-family: 'DM Serif Display', serif;
+  }
+  
+  .font-script {
+    font-family: 'Caveat', cursive;
+    font-weight: 500;
+  }
+  
+  /* Decorative elements */
+  .tape {
+    position: absolute;
+    height: 1rem;
+    background-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transform-origin: center;
+  }
+  
+  .paper-clip {
+    position: absolute;
+    top: -10px;
+    right: 30px;
+    width: 12px;
+    height: 30px;
+    border: 2px solid #999;
+    border-radius: 4px 4px 0 0;
+    transform: rotate(5deg);
+  }
+  
+  .paper-clip::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -5px;
+    width: 20px;
+    height: 10px;
+    border: 2px solid #999;
+    border-radius: 10px 10px 0 0;
+    border-bottom: none;
+  }
+  
+  /* Animations */
+  .float-animation {
+    animation: float 5s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+    100% {
+      transform: translateY(0px);
+    }
+  }
 }
