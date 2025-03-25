@@ -14,7 +14,7 @@ interface HeaderProps {
   notifications: number;
   photoURL?: string;
   relationship?: Relationship;
-  onShowInvite: () => void;
+  onShowInvite?: () => void;
 }
 
 export default function Header({ userName, notifications, photoURL, relationship, onShowInvite }: HeaderProps) {
@@ -57,19 +57,13 @@ export default function Header({ userName, notifications, photoURL, relationship
               </DropdownMenuTrigger>
               
               <DropdownMenuContent>
-                {relationship ? (
+                {relationship && onShowInvite ? (
                   <>
                     <DropdownMenuItem onClick={onShowInvite}>
                       Share Invite Code
                     </DropdownMenuItem>
                   </>
-                ) : (
-                  <>
-                    <DropdownMenuItem onClick={onShowInvite}>
-                      Create Relationship
-                    </DropdownMenuItem>
-                  </>
-                )}
+                ) : null}
                 <DropdownMenuItem onClick={handleLogout}>
                   Logout
                 </DropdownMenuItem>
