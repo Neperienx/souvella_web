@@ -173,11 +173,18 @@ export class MemStorage implements IStorage {
     const createdAt = new Date();
     const thumbsUpCount = 0;
     
+    // Create a properly typed memory object
     const memory: Memory = { 
-      ...insertMemory, 
       id, 
+      userId: insertMemory.userId, 
+      relationshipId: insertMemory.relationshipId,
+      type: insertMemory.type,
+      content: insertMemory.content,
       createdAt, 
-      thumbsUpCount 
+      caption: insertMemory.caption ?? null,
+      imageUrl: insertMemory.imageUrl ?? null,
+      thumbsUpCount,
+      isNew: insertMemory.isNew ?? true
     };
     
     this.memories.set(id, memory);

@@ -33,6 +33,13 @@ export default function HomePage() {
   // Get all memories for this relationship
   const { data: allMemories } = useRelationshipMemories(relationship?.id || null);
   
+  // Filter today's uploaded memories (using string comparison instead of trying to convert UID to number)
+  const todaysDate = new Date().toISOString().split('T')[0];
+  const todaysUploadedMemories = (allMemories || []).filter(memory => {
+    const memoryDate = new Date(memory.createdAt).toISOString().split('T')[0];
+    return memoryDate === todaysDate && String(memory.userId) === user?.uid;
+  });
+  
   // Get newly added memories
   const { data: newMemories, isLoading: newMemoriesLoading } = useNewMemories(relationship?.id || null);
   
