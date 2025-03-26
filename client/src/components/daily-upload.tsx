@@ -27,6 +27,7 @@ interface DailyUploadProps {
 export default function DailyUpload({ userId, relationshipId, memories }: DailyUploadProps) {
   const [memoryType, setMemoryType] = useState<"text" | "image" | "audio">("text");
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -58,7 +59,17 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+      
+      // Create a preview URL for the image
+      const objectUrl = URL.createObjectURL(selectedFile);
+      setPreviewUrl(objectUrl);
+      
+      // Set a default value for the content field if empty
+      if (!form.getValues('content')) {
+        form.setValue('content', 'Image memory');
+      }
     }
   };
 
@@ -109,6 +120,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     // Reset form
     form.reset();
     setFile(null);
+    setPreviewUrl(null);
     setMemoryType("text");
   };
 
@@ -139,7 +151,16 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
             )}
             
             {file && memoryType === "image" && (
-              <div className="mt-3">
+              <div className="mt-3 space-y-3">
+                {previewUrl && (
+                  <div className="relative w-full aspect-video max-h-64 overflow-hidden rounded-lg border-2 border-[var(--primary)]/20 bg-white/90">
+                    <img 
+                      src={previewUrl} 
+                      alt="Preview" 
+                      className="object-contain w-full h-full" 
+                    />
+                  </div>
+                )}
                 <input
                   {...form.register("caption")}
                   placeholder="Add a caption to your photo..."
