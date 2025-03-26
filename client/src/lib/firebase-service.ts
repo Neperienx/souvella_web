@@ -60,15 +60,27 @@ function convertToMemory(doc: QueryDocumentSnapshot): Memory {
 
 // Get memories for a relationship
 export async function getRelationshipMemories(relationshipId: number): Promise<Memory[]> {
-  const q = query(
-    memoriesCollection,
-    where("relationshipId", "==", relationshipId),
-    orderBy("createdAt", "desc")
-  );
+  try {
+    // Using only a single filter to avoid index requirements
+    const q = query(
+      memoriesCollection,
+      where("relationshipId", "==", relationshipId)
+    );
 
-  const querySnapshot = await getDocs(q);
-  const memories = querySnapshot.docs.map(convertToMemory);
-  return memories;
+    const querySnapshot = await getDocs(q);
+    
+    // Sort client-side by creation date (descending)
+    const memories = querySnapshot.docs
+      .map(convertToMemory)
+      .sort((a, b) => {
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+      
+    return memories;
+  } catch (error) {
+    console.error("Error getting relationship memories:", error);
+    return []; // Return empty array in case of error
+  }
 }
 
 // Get today's memories for a relationship
@@ -114,16 +126,33 @@ export async function getDailyMemories(relationshipId: number): Promise<Memory[]
 
 // Get newly added memories for a relationship
 export async function getNewMemories(relationshipId: number): Promise<Memory[]> {
-  const q = query(
-    memoriesCollection,
-    where("relationshipId", "==", relationshipId),
-    where("isNew", "==", true),
-    orderBy("createdAt", "desc")
-  );
+  try {
+    // Firestore requires an index for queries with multiple filters + orderBy
+    // First get all memories for the relationship
+    const q = query(
+      memoriesCollection,
+      where("relationshipId", "==", relationshipId)
+    );
 
-  const querySnapshot = await getDocs(q);
-  const memories = querySnapshot.docs.map(convertToMemory);
-  return memories;
+    const querySnapshot = await getDocs(q);
+    
+    // Then filter by isNew and sort client-side
+    const newMemories = querySnapshot.docs
+      .filter(doc => {
+        const data = doc.data() as FirestoreMemory;
+        return data.isNew === true;
+      })
+      .map(convertToMemory)
+      .sort((a, b) => {
+        // Sort descending by creation date
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    
+    return newMemories;
+  } catch (error) {
+    console.error("Error getting new memories:", error);
+    return []; // Return empty array in case of error
+  }
 }
 
 // Create a new memory
@@ -253,53 +282,73 @@ export async function reactToMemory(memoryId: string): Promise<void> {
 
 // Mark memories as not new (after they've been viewed)
 export async function markMemoriesAsViewed(relationshipId: number): Promise<void> {
-  const q = query(
-    memoriesCollection,
-    where("relationshipId", "==", relationshipId),
-    where("isNew", "==", true)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  const batch = writeBatch(firestore);
-  
-  querySnapshot.docs.forEach((document) => {
-    batch.update(document.ref, { isNew: false });
-  });
-  
-  await batch.commit();
+  try {
+    // Only query by relationshipId to avoid index requirement
+    const q = query(
+      memoriesCollection,
+      where("relationshipId", "==", relationshipId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    // Filter documents client-side to find those that are new
+    const newMemoryDocs = querySnapshot.docs.filter(doc => {
+      const data = doc.data() as FirestoreMemory;
+      return data.isNew === true;
+    });
+    
+    // If there are no new memories, return early
+    if (newMemoryDocs.length === 0) {
+      return;
+    }
+    
+    // Update all new memories in a batch
+    const batch = writeBatch(firestore);
+    
+    newMemoryDocs.forEach((document) => {
+      batch.update(document.ref, { isNew: false });
+    });
+    
+    await batch.commit();
+    console.log(`Marked ${newMemoryDocs.length} memories as viewed`);
+  } catch (error) {
+    console.error("Error marking memories as viewed:", error);
+  }
 }
 
 // Select random memories for the daily view
 export async function selectRandomMemoriesForDay(relationshipId: number, count: number): Promise<Memory[]> {
-  const q = query(
-    memoriesCollection,
-    where("relationshipId", "==", relationshipId),
-    // Order by random field would be ideal here, but Firestore doesn't support it directly
-    // Using createdAt as a proxy, though not truly random
-    orderBy("createdAt")
-  );
-  
-  const querySnapshot = await getDocs(q);
-  const allMemories = querySnapshot.docs.map(convertToMemory);
-  
-  // If we have fewer memories than requested, return all of them
-  if (allMemories.length <= count) {
-    return allMemories;
-  }
-  
-  // Otherwise, pick random memories
-  const selectedMemories: Memory[] = [];
-  const indices = new Set<number>();
-  
-  while (selectedMemories.length < count && selectedMemories.length < allMemories.length) {
-    const index = Math.floor(Math.random() * allMemories.length);
+  try {
+    // Use only a single where condition to avoid index requirements
+    const q = query(
+      memoriesCollection,
+      where("relationshipId", "==", relationshipId)
+    );
     
-    if (!indices.has(index)) {
-      indices.add(index);
-      selectedMemories.push(allMemories[index]);
+    const querySnapshot = await getDocs(q);
+    const allMemories = querySnapshot.docs.map(convertToMemory);
+    
+    // If we have fewer memories than requested, return all of them
+    if (allMemories.length <= count) {
+      return allMemories;
     }
+    
+    // Otherwise, pick random memories
+    const selectedMemories: Memory[] = [];
+    const indices = new Set<number>();
+    
+    while (selectedMemories.length < count && selectedMemories.length < allMemories.length) {
+      const index = Math.floor(Math.random() * allMemories.length);
+      
+      if (!indices.has(index)) {
+        indices.add(index);
+        selectedMemories.push(allMemories[index]);
+      }
+    }
+    
+    return selectedMemories;
+  } catch (error) {
+    console.error("Error selecting random memories:", error);
+    return []; // Return empty array in case of error
   }
-  
-  return selectedMemories;
 }
