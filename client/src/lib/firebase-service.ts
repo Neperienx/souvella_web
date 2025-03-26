@@ -119,11 +119,10 @@ export async function getDailyMemories(relationshipId: number): Promise<Memory[]
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Create a query to get the daily memories document for today
+    // Use a single where clause to avoid needing a composite index
     const q = query(
       dailyMemoriesCollection,
-      where("relationshipId", "==", relationshipIdString),
-      where("date", ">=", today)
+      where("relationshipId", "==", relationshipIdString)
     );
     
     const querySnapshot = await getDocs(q);
@@ -328,10 +327,10 @@ async function updateDailyMemoriesDocument(
     });
     
     // Get the existing daily memory document, if any
+    // Use single where clause to avoid composite index requirements
     const q = query(
       dailyMemoriesCollection,
-      where("relationshipId", "==", relationshipIdString),
-      where("date", ">=", today)
+      where("relationshipId", "==", relationshipIdString)
     );
     
     const querySnapshot = await getDocs(q);
@@ -475,10 +474,10 @@ export async function createMemory(data: {
     
     // relationshipIdString is already defined above
     
+    // Use a single where clause to avoid needing a composite index
     const dailyMemoryQuery = query(
       dailyMemoriesCollection,
-      where("relationshipId", "==", relationshipIdString),
-      where("date", ">=", today)
+      where("relationshipId", "==", relationshipIdString)
     );
     
     const dailyMemorySnapshot = await getDocs(dailyMemoryQuery);
@@ -536,7 +535,9 @@ export async function getUserRemainingThumbsUp(userId: string): Promise<number> 
     const MAX_DAILY_THUMBS_UP = 2;
     const today = formatDateForStorage(new Date());
     
-    // Query reactions from today for this user
+    // For this case, we need a composite index on userReactionsCollection (userId + date)
+    // This specific query is needed for functionality and can't be simplified further
+    // Firebase will show a link to create this index if it doesn't exist
     const q = query(
       userReactionsCollection,
       where("userId", "==", userId),
