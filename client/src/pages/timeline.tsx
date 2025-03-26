@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth";
 import { useUserRelationship } from "../hooks/use-relationship";
 import { useRelationshipMemories } from "../hooks/use-memories";
+import { Memory } from "@/lib/firebase-service";
 
 import Header from "../components/header";
 import MemoryTimeline from "../components/memory-timeline";
