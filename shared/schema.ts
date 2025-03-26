@@ -49,8 +49,11 @@ export const memories = pgTable("memories", {
   relationshipId: integer("relationship_id").notNull().references(() => relationships.id),
   type: text("type").notNull(), // 'text', 'image', 'audio'
   content: text("content").notNull(), // Text content or URL to media file
+  caption: text("caption"), // Optional caption for images
+  imageUrl: text("image_url"), // URL to image file (specific to image type)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   thumbsUpCount: integer("thumbs_up_count").notNull().default(0),
+  isNew: boolean("is_new").notNull().default(true), // Flag to indicate a newly added memory
 });
 
 export const insertMemorySchema = createInsertSchema(memories).omit({
