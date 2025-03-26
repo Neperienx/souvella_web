@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatDate, getTapePosition } from "../lib/utils";
-import { Memory } from "@shared/schema";
+import { Memory } from "@/lib/firebase-service";
 import { useReactToMemory, useRemainingThumbsUp } from "../hooks/use-memories";
 import { useAuth } from "../hooks/use-auth";
 

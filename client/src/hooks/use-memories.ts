@@ -1,8 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
-import { Memory } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { Memory } from "@/lib/firebase-service";
 import { 
   getRelationshipMemories, 
   getDailyMemories, 

@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firestore, storage } from "./firebase";
-import { Memory, MemoryType } from "@shared/schema";
+import { MemoryType } from "@shared/schema";
 
 // Collection references
 const memoriesCollection = collection(firestore, "memories");
@@ -35,6 +35,20 @@ interface FirestoreMemory {
   createdAt: Timestamp;
   thumbsUpCount: number;
   isNew: boolean; // Flag to indicate a newly added memory
+}
+
+// Custom Memory type for Firestore compatibility with string IDs
+export interface Memory {
+  id: string;
+  userId: string;
+  relationshipId: number;
+  type: MemoryType;
+  content: string;
+  caption: string | null;
+  imageUrl: string | null;
+  createdAt: Date;
+  thumbsUpCount: number;
+  isNew: boolean;
 }
 
 interface FirestoreDailyMemory {
@@ -55,8 +69,8 @@ interface UserReaction {
 function convertToMemory(doc: QueryDocumentSnapshot): Memory {
   const data = doc.data() as FirestoreMemory;
   return {
-    id: parseInt(doc.id),
-    userId: parseInt(data.userId),
+    id: doc.id, // Keep ID as string to match Firebase document ID
+    userId: data.userId, // Keep as string to match Firebase user ID
     relationshipId: data.relationshipId,
     type: data.type as MemoryType,
     content: data.content,
@@ -273,8 +287,8 @@ export async function createMemory(data: {
     
     // Return the created memory
     return {
-      id: parseInt(docRef.id),
-      userId: parseInt(data.userId),
+      id: docRef.id, // Keep ID as string to match Firebase document ID
+      userId: data.userId, // Keep as string to match Firebase user ID
       relationshipId: data.relationshipId,
       type: data.type as MemoryType,
       content: data.type === "image" && imageUrl ? imageUrl : data.content,
