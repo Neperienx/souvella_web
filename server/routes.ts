@@ -60,16 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Check if user already has a relationship
-      const existingRelationship = await storage.getUserRelationship(user.id);
-      if (existingRelationship) {
-        return res.status(400).json({ 
-          message: "User already has a relationship", 
-          relationship: existingRelationship 
-        });
-      }
-      
-      // Create a new relationship
+      // Create a new relationship (allowing multiple relationships)
       const relationship = await storage.createRelationship();
       
       // Add user to relationship
@@ -116,20 +107,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Check if user already has a relationship
-      const existingRelationship = await storage.getUserRelationship(user.id);
-      if (existingRelationship) {
-        return res.status(400).json({ 
-          message: "User already has a relationship", 
-          relationship: existingRelationship 
-        });
-      }
-      
       // Find relationship by invite code
       const relationship = await storage.getRelationshipByInviteCode(inviteCode);
       
       if (!relationship) {
         return res.status(404).json({ message: "Invalid invite code" });
+      }
+      
+      // Check if user is already in this specific relationship
+      const userRelationships = await storage.getUserRelationships(user.id);
+      const alreadyInRelationship = userRelationships.some(rel => rel.id === relationship.id);
+      
+      if (alreadyInRelationship) {
+        return res.status(400).json({ 
+          message: "User is already part of this relationship", 
+          relationship 
+        });
       }
       
       // Add user to relationship

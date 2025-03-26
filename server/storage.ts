@@ -17,6 +17,7 @@ export interface IStorage {
   getRelationshipById(id: number): Promise<Relationship | undefined>;
   getRelationshipByInviteCode(code: string): Promise<Relationship | undefined>;
   getUserRelationship(userId: number): Promise<Relationship | undefined>;
+  getUserRelationships(userId: number): Promise<Relationship[]>;
   createRelationship(): Promise<Relationship>;
   addUserToRelationship(userId: number, relationshipId: number): Promise<UserRelationship>;
 
@@ -69,7 +70,9 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId.user++;
-    const user: User = { ...insertUser, id };
+    // Ensure photoURL is never undefined (convert to null if needed)
+    const photoURL = insertUser.photoURL === undefined ? null : insertUser.photoURL;
+    const user: User = { ...insertUser, id, photoURL };
     this.users.set(id, user);
     return user;
   }
@@ -97,6 +100,24 @@ export class MemStorage implements IStorage {
 
     // Return the associated relationship
     return this.relationships.get(userRelationship.relationshipId);
+  }
+  
+  async getUserRelationships(userId: number): Promise<Relationship[]> {
+    // Find all relationships for this user
+    const userRelationshipIds = Array.from(this.userRelationships.values())
+      .filter(ur => ur.userId === userId)
+      .map(ur => ur.relationshipId);
+    
+    // Get the relationship objects
+    const relationships: Relationship[] = [];
+    for (const relationshipId of userRelationshipIds) {
+      const relationship = this.relationships.get(relationshipId);
+      if (relationship) {
+        relationships.push(relationship);
+      }
+    }
+    
+    return relationships;
   }
 
   async createRelationship(): Promise<Relationship> {
