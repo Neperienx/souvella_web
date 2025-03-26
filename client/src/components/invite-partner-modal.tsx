@@ -24,11 +24,21 @@ export default function InvitePartnerModal({ isOpen, onClose, inviteCode: propIn
   const { user } = useAuth();
   
   // Get the latest relationship data directly
-  const { data: relationship } = useUserRelationship(user?.uid || null);
+  const { data: relationship, refetch } = useUserRelationship(user?.uid || null);
+  
+  // Ensure we always get fresh data when modal is opened
+  useEffect(() => {
+    if (isOpen && user?.uid) {
+      console.log("Modal opened, refetching relationship data");
+      refetch();
+    }
+  }, [isOpen, user?.uid, refetch]);
+  
   const inviteCode = relationship?.inviteCode || propInviteCode;
   
   // Update viewMode when relationship/inviteCode changes
   useEffect(() => {
+    console.log("Invite code updated:", inviteCode);
     if (inviteCode) {
       setViewMode("share");
     }

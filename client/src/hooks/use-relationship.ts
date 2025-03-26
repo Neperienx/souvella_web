@@ -28,11 +28,15 @@ export function useCreateRelationship() {
   return useMutation({
     mutationFn: async (uid: string) => {
       try {
+        console.log("Creating new relationship for user:", uid);
+        
         // Create the relationship in Firebase
         const newRelationship = await createRelationship();
+        console.log("Relationship created with ID:", newRelationship.id, "and code:", newRelationship.inviteCode);
         
         // Add the user to this relationship and get the updated relationship
         const updatedRelationship = await addUserToRelationship(uid, newRelationship.id);
+        console.log("User added to relationship, returning:", updatedRelationship);
         
         return updatedRelationship;
       } catch (error) {
@@ -41,10 +45,18 @@ export function useCreateRelationship() {
       }
     },
     onSuccess: (data, variables) => {
+      console.log("Relationship created successfully:", data);
+      
       // Immediately update the relationship query cache with the new data
       queryClient.setQueryData(["relationships/user", variables], data);
+      
       // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["relationships/user", variables] });
+      
+      // Forces a refetch to ensure we have the latest data
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["relationships/user", variables] });
+      }, 300);
       
       toast({
         title: "Relationship Created",
@@ -71,15 +83,21 @@ export function useJoinRelationship() {
   return useMutation({
     mutationFn: async ({ uid, inviteCode }: { uid: string; inviteCode: string }) => {
       try {
+        console.log("Joining relationship with invite code:", inviteCode, "for user:", uid);
+        
         // Find the relationship by invite code
         const relationship = await getRelationshipByInviteCode(inviteCode);
         
         if (!relationship) {
+          console.error("Invalid invite code:", inviteCode);
           throw new Error("Invalid invite code. Please check and try again.");
         }
         
+        console.log("Found relationship with ID:", relationship.id);
+        
         // Add the user to this relationship and get the updated relationship
         const updatedRelationship = await addUserToRelationship(uid, relationship.id);
+        console.log("User added to relationship, returning:", updatedRelationship);
         
         return updatedRelationship;
       } catch (error) {
@@ -88,10 +106,18 @@ export function useJoinRelationship() {
       }
     },
     onSuccess: (data, variables) => {
+      console.log("Successfully joined relationship:", data);
+      
       // Immediately update the relationship query cache with the new data
       queryClient.setQueryData(["relationships/user", variables.uid], data);
+      
       // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["relationships/user", variables.uid] });
+      
+      // Forces a refetch to ensure we have the latest data
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["relationships/user", variables.uid] });
+      }, 300);
       
       toast({
         title: "Joined Relationship",

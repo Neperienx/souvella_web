@@ -10,7 +10,8 @@ import {
   getDoc,
   Timestamp,
   QueryDocumentSnapshot,
-  setDoc
+  setDoc,
+  deleteDoc
 } from "firebase/firestore";
 import { firestore } from "./firebase";
 import { Relationship, UserRelationship } from "@shared/schema";
@@ -126,12 +127,23 @@ export async function getUserRelationships(userId: string): Promise<Relationship
     // Get all relationships
     const relationships: Relationship[] = [];
     
+    // Track user relationships that need cleanup
+    const invalidUserRelationships: string[] = [];
+    
     for (const docSnapshot of querySnapshot.docs) {
       const userData = docSnapshot.data() as FirestoreUserRelationship;
       console.log("User relationship data:", userData);
       
       if (!userData.relationshipId) {
         console.warn("Relationship ID is missing in user relationship document");
+        invalidUserRelationships.push(docSnapshot.id);
+        continue;
+      }
+      
+      // Skip invalid relationship IDs like "NaN"
+      if (userData.relationshipId === "NaN" || isNaN(Number(userData.relationshipId))) {
+        console.warn(`Invalid relationship ID: ${userData.relationshipId}. Skipping.`);
+        invalidUserRelationships.push(docSnapshot.id);
         continue;
       }
       
@@ -142,6 +154,23 @@ export async function getUserRelationships(userId: string): Promise<Relationship
         relationships.push(convertToRelationship(relationshipDoc));
       } else {
         console.warn(`Relationship with ID ${userData.relationshipId} not found in Firestore`);
+        invalidUserRelationships.push(docSnapshot.id);
+      }
+    }
+    
+    // Clean up invalid user relationships if found
+    if (invalidUserRelationships.length > 0) {
+      console.log(`Found ${invalidUserRelationships.length} invalid user relationships. Cleaning up...`);
+      
+      for (const docId of invalidUserRelationships) {
+        try {
+          // Delete the invalid user relationship record
+          const docRef = doc(userRelationshipsCollection, docId);
+          await deleteDoc(docRef);
+          console.log(`Deleted invalid user relationship: ${docId}`);
+        } catch (error) {
+          console.error(`Failed to delete invalid user relationship: ${docId}`, error);
+        }
       }
     }
     
