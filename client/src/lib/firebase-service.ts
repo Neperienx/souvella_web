@@ -135,96 +135,104 @@ export async function createMemory(data: {
   caption?: string;
   file?: File;
 }): Promise<Memory> {
-  console.log("Creating memory with data:", JSON.stringify({
-    userId: data.userId,
-    relationshipId: data.relationshipId,
-    type: data.type,
-    content: data.content?.substring(0, 30) + "...",
-    hasCaption: !!data.caption,
-    hasFile: !!data.file
-  }));
-  
-  let imageUrl = "";
-  
-  // If there's a file, upload it to Firebase Storage
-  if (data.file && data.type === "image") {
-    console.log("Uploading file to Firebase Storage");
-    const storageRef = ref(storage, `memories/${data.relationshipId}/${Date.now()}_${data.file.name}`);
-    const snapshot = await uploadBytes(storageRef, data.file);
-    imageUrl = await getDownloadURL(snapshot.ref);
-    console.log("File uploaded successfully, image URL obtained");
-  }
-  
-  // Create memory document
-  const memoryData: Partial<FirestoreMemory> = {
-    userId: data.userId,
-    relationshipId: data.relationshipId,
-    type: data.type,
-    content: data.type === "image" && imageUrl ? imageUrl : data.content,
-    createdAt: serverTimestamp() as Timestamp,
-    thumbsUpCount: 0,
-    isNew: true // Mark as new when created
-  };
-  
-  // Only add caption if it exists
-  if (data.caption) {
-    memoryData.caption = data.caption;
-  }
-  
-  // Only add imageUrl if it exists
-  if (imageUrl) {
-    memoryData.imageUrl = imageUrl;
-  }
-  
-  const docRef = await addDoc(memoriesCollection, memoryData);
-  
-  // Create a daily memory record if it doesn't exist
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const dailyMemoryQuery = query(
-    dailyMemoriesCollection,
-    where("relationshipId", "==", data.relationshipId),
-    where("date", ">=", today)
-  );
-  
-  const dailyMemorySnapshot = await getDocs(dailyMemoryQuery);
-  
   try {
-    if (dailyMemorySnapshot.empty) {
-      // Create a new daily memory
-      await addDoc(dailyMemoriesCollection, {
-        relationshipId: data.relationshipId,
-        memoryIds: [docRef.id],
-        date: serverTimestamp()
-      });
-    } else {
-      // Update existing daily memory
-      const dailyMemoryDoc = dailyMemorySnapshot.docs[0];
-      const dailyMemoryData = dailyMemoryDoc.data() as FirestoreDailyMemory;
-      
-      await updateDoc(dailyMemoryDoc.ref, {
-        memoryIds: [...(dailyMemoryData.memoryIds || []), docRef.id]
-      });
+    console.log("Creating memory with data:", {
+      userId: data.userId,
+      relationshipId: data.relationshipId,
+      type: data.type,
+      contentLength: data.content?.length,
+      hasCaption: !!data.caption,
+      hasFile: !!data.file
+    });
+    
+    let imageUrl = "";
+    
+    // If there's a file, upload it to Firebase Storage
+    if (data.file && data.type === "image") {
+      console.log("Uploading file to Firebase Storage");
+      const storageRef = ref(storage, `memories/${data.relationshipId}/${Date.now()}_${data.file.name}`);
+      const snapshot = await uploadBytes(storageRef, data.file);
+      imageUrl = await getDownloadURL(snapshot.ref);
+      console.log("File uploaded successfully, image URL obtained");
     }
+    
+    // Create memory document with required fields only
+    const memoryData: any = {
+      userId: data.userId,
+      relationshipId: data.relationshipId,
+      type: data.type,
+      content: data.content || "",
+      createdAt: serverTimestamp(),
+      thumbsUpCount: 0,
+      isNew: true
+    };
+    
+    // Only add caption if it exists and is not empty
+    if (data.caption && data.caption.trim() !== '') {
+      memoryData.caption = data.caption;
+    }
+    
+    // Only add imageUrl if it exists and is not empty
+    if (imageUrl && imageUrl.trim() !== '') {
+      memoryData.imageUrl = imageUrl;
+    }
+    
+    console.log("Adding document to Firestore with data:", Object.keys(memoryData));
+    const docRef = await addDoc(memoriesCollection, memoryData);
+    console.log("Document added successfully with ID:", docRef.id);
+    
+    // Create a daily memory record if it doesn't exist
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const dailyMemoryQuery = query(
+      dailyMemoriesCollection,
+      where("relationshipId", "==", data.relationshipId),
+      where("date", ">=", today)
+    );
+    
+    const dailyMemorySnapshot = await getDocs(dailyMemoryQuery);
+    
+    try {
+      if (dailyMemorySnapshot.empty) {
+        // Create a new daily memory
+        await addDoc(dailyMemoriesCollection, {
+          relationshipId: data.relationshipId,
+          memoryIds: [docRef.id],
+          date: serverTimestamp()
+        });
+      } else {
+        // Update existing daily memory
+        const dailyMemoryDoc = dailyMemorySnapshot.docs[0];
+        const dailyMemoryData = dailyMemoryDoc.data() as FirestoreDailyMemory;
+        
+        await updateDoc(dailyMemoryDoc.ref, {
+          memoryIds: [...(dailyMemoryData.memoryIds || []), docRef.id]
+        });
+      }
+    } catch (error) {
+      console.error("Error creating/updating daily memory:", error);
+      // Continue execution even if daily memory creation fails
+    }
+    
+    // Return the created memory
+    return {
+      id: parseInt(docRef.id),
+      userId: parseInt(data.userId),
+      relationshipId: data.relationshipId,
+      type: data.type as MemoryType,
+      content: data.type === "image" && imageUrl ? imageUrl : data.content,
+      caption: data.caption || null,
+      imageUrl: imageUrl || null,
+      createdAt: new Date(),
+      thumbsUpCount: 0,
+      isNew: true
+    };
+    
   } catch (error) {
-    console.error("Error creating/updating daily memory:", error);
-    // Continue execution even if daily memory creation fails
+    console.error("Error creating memory:", error);
+    throw error;
   }
-  
-  // Return the created memory
-  return {
-    id: parseInt(docRef.id),
-    userId: parseInt(data.userId),
-    relationshipId: data.relationshipId,
-    type: data.type as MemoryType,
-    content: data.type === "image" && imageUrl ? imageUrl : data.content,
-    caption: data.caption || null,
-    imageUrl: imageUrl || null,
-    createdAt: new Date(),
-    thumbsUpCount: 0,
-    isNew: true
-  };
 }
 
 // React to a memory (thumbs up)
