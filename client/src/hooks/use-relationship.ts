@@ -31,10 +31,10 @@ export function useCreateRelationship() {
         // Create the relationship in Firebase
         const newRelationship = await createRelationship();
         
-        // Add the user to this relationship
-        await addUserToRelationship(uid, newRelationship.id);
+        // Add the user to this relationship and get the updated relationship
+        const updatedRelationship = await addUserToRelationship(uid, newRelationship.id);
         
-        return newRelationship;
+        return updatedRelationship;
       } catch (error) {
         console.error("Error in createRelationship mutation:", error);
         throw error;
@@ -78,10 +78,10 @@ export function useJoinRelationship() {
           throw new Error("Invalid invite code. Please check and try again.");
         }
         
-        // Add the user to this relationship
-        await addUserToRelationship(uid, relationship.id);
+        // Add the user to this relationship and get the updated relationship
+        const updatedRelationship = await addUserToRelationship(uid, relationship.id);
         
-        return relationship;
+        return updatedRelationship;
       } catch (error) {
         console.error("Error in joinRelationship mutation:", error);
         throw error;

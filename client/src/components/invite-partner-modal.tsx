@@ -67,12 +67,14 @@ export default function InvitePartnerModal({ isOpen, onClose, inviteCode: propIn
   const onSubmit = async (data: InviteFormValues) => {
     if (user) {
       try {
-        await joinRelationship({
+        const result = await joinRelationship({
           uid: user.uid,
           inviteCode: data.inviteCode,
         });
         // Force a refetch after joining to ensure we have the latest data
         queryClient.invalidateQueries({ queryKey: ["relationships/user", user.uid] });
+        // Close the modal once we've joined successfully
+        onClose();
       } catch (error) {
         console.error("Error joining relationship:", error);
       }

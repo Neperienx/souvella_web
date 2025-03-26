@@ -150,7 +150,7 @@ export async function createRelationship(): Promise<Relationship> {
 }
 
 // Add user to relationship
-export async function addUserToRelationship(userId: string, relationshipId: number): Promise<void> {
+export async function addUserToRelationship(userId: string, relationshipId: number): Promise<Relationship> {
   try {
     // Check if user is already in this relationship
     const q = query(
@@ -163,7 +163,12 @@ export async function addUserToRelationship(userId: string, relationshipId: numb
     
     if (!querySnapshot.empty) {
       // User is already in this relationship
-      return;
+      // Return the relationship
+      const relationship = await getRelationshipById(relationshipId);
+      if (!relationship) {
+        throw new Error("Relationship not found");
+      }
+      return relationship;
     }
     
     // Add user to relationship
@@ -172,6 +177,13 @@ export async function addUserToRelationship(userId: string, relationshipId: numb
       relationshipId: relationshipId.toString(),
       createdAt: serverTimestamp()
     });
+    
+    // Return the relationship
+    const relationship = await getRelationshipById(relationshipId);
+    if (!relationship) {
+      throw new Error("Relationship not found");
+    }
+    return relationship;
   } catch (error) {
     console.error("Error adding user to relationship:", error);
     throw error;

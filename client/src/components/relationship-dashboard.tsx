@@ -30,7 +30,7 @@ export default function RelationshipDashboard({ userId, onRelationshipCreated }:
     }
   };
   
-  const handleJoinRelationship = (e: React.FormEvent) => {
+  const handleJoinRelationship = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!inviteCode) {
@@ -42,7 +42,16 @@ export default function RelationshipDashboard({ userId, onRelationshipCreated }:
       return;
     }
     
-    joinRelationship({ uid: userId, inviteCode });
+    try {
+      await joinRelationship({ uid: userId, inviteCode });
+      // After joining, the relationship will be updated in the cache
+      // and the onRelationshipCreated callback can be called
+      if (onRelationshipCreated) {
+        onRelationshipCreated();
+      }
+    } catch (error) {
+      console.error("Error joining relationship:", error);
+    }
   };
   
   return (
