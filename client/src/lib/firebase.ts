@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApp } from "firebase/app";
 import { 
   getAuth, 
   GoogleAuthProvider, 
@@ -16,11 +16,32 @@ const firebaseConfig = {
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  messagingSenderId: "", // Can be blank for our purposes
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// For debugging
+console.log("Firebase config (without sensitive data):", {
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
+  hasAppId: !!import.meta.env.VITE_FIREBASE_APP_ID
+});
+
+// Initialize Firebase (only once)
+let app;
+try {
+  // Try to get existing app
+  app = getApp();
+  console.log("Using existing Firebase app");
+} catch (error) {
+  // Initialize a new app if none exists
+  app = initializeApp(firebaseConfig);
+  console.log("Initialized new Firebase app");
+}
+
+// Get services from the app
 const auth = getAuth(app);
 const storage = getStorage(app);
 const firestore = getFirestore(app);

@@ -51,6 +51,47 @@ export interface Memory {
   isNew: boolean;
 }
 
+// Diagnostic function to check if Firebase Storage is properly initialized
+export async function checkFirebaseStorage(): Promise<boolean> {
+  try {
+    console.log("STORAGE DEBUG: Checking Firebase storage setup");
+    console.log("STORAGE DEBUG: Storage object exists:", !!storage);
+    
+    if (!storage) {
+      console.error("STORAGE DEBUG: Storage object is undefined or null");
+      return false;
+    }
+    
+    // Create a test reference to check if storage is working
+    const testRef = ref(storage, "test/storage-check.txt");
+    console.log("STORAGE DEBUG: Successfully created test reference", testRef);
+    
+    // Try to upload a tiny text file
+    const testData = new Uint8Array([72, 101, 108, 108, 111]); // "Hello" in ASCII
+    console.log("STORAGE DEBUG: Attempting to upload test data");
+    
+    try {
+      const snapshot = await uploadBytes(testRef, testData);
+      console.log("STORAGE DEBUG: Test upload successful", snapshot);
+      
+      // Try to get download URL
+      const url = await getDownloadURL(testRef);
+      console.log("STORAGE DEBUG: Test download URL obtained:", url);
+      
+      return true;
+    } catch (uploadError) {
+      console.error("STORAGE DEBUG: Test upload failed", uploadError);
+      if (uploadError instanceof Error) {
+        console.error("STORAGE DEBUG: Error message:", uploadError.message);
+      }
+      return false;
+    }
+  } catch (error) {
+    console.error("STORAGE DEBUG: Firebase storage check failed", error);
+    return false;
+  }
+}
+
 interface FirestoreDailyMemory {
   relationshipId: string; // Using string to match how it's stored in Firestore
   memoryIds: string[];
@@ -478,14 +519,38 @@ export async function createMemory(data: {
         const filePath = `memories/${relationshipIdString}/${filename}`;
         
         console.log(`UPLOAD DEBUG: Creating Firebase storage reference to ${filePath}`);
-        const storageRef = ref(storage, filePath);
+        console.log(`UPLOAD DEBUG: Storage object:`, storage ? "Exists" : "Undefined");
+        console.log(`UPLOAD DEBUG: Firebase config:`, {
+          storageBucket: import.meta.env.VITE_FIREBASE_PROJECT_ID 
+            ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` 
+            : "Not configured"
+        });
         
-        console.log("UPLOAD DEBUG: Beginning uploadBytes operation");
-        const snapshot = await uploadBytes(storageRef, fileToUpload);
-        console.log("UPLOAD DEBUG: Upload completed successfully, getting download URL");
+        // Check if the Firebase Storage is properly configured
+        if (!storage) {
+          throw new Error("Firebase Storage is not initialized properly");
+        }
         
-        imageUrl = await getDownloadURL(snapshot.ref);
-        console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl.substring(0, 50) + "...");
+        try {
+          // Try getting the storage reference
+          const storageRef = ref(storage, filePath);
+          console.log("UPLOAD DEBUG: Storage reference created successfully", storageRef);
+          
+          console.log("UPLOAD DEBUG: Beginning uploadBytes operation");
+          const snapshot = await uploadBytes(storageRef, fileToUpload);
+          console.log("UPLOAD DEBUG: Upload completed successfully, details:", snapshot);
+          
+          console.log("UPLOAD DEBUG: Getting download URL");
+          imageUrl = await getDownloadURL(snapshot.ref);
+          console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl.substring(0, 50) + "...");
+        } catch (storageError) {
+          console.error("UPLOAD DEBUG: Storage operation error:", storageError);
+          if (storageError instanceof Error) {
+            console.error("UPLOAD DEBUG: Error message:", storageError.message);
+            console.error("UPLOAD DEBUG: Error name:", storageError.name);
+          }
+          throw storageError; // Re-throw to the outer catch block
+        }
       } catch (uploadError) {
         console.error("UPLOAD DEBUG ERROR: Failed to upload file to Firebase Storage:", uploadError);
         // Log more details about the error
