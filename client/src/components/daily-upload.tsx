@@ -105,14 +105,17 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       return;
     }
     
-    // Prepare memory data
+    // Determine the correct memory type based on whether a file is selected
+    const actualMemoryType = (memoryType === "image" && file) ? "image" : "text";
+    
+    // Prepare memory data with correct file handling
     const memoryData = {
       userId: firebaseUid,
       relationshipId,
-      type: memoryType,
+      type: actualMemoryType,
       content: data.content,
-      caption: memoryType === "image" ? data.caption : undefined,
-      file: memoryType === "image" ? file || undefined : undefined
+      caption: actualMemoryType === "image" ? data.caption : undefined,
+      file: actualMemoryType === "image" && file ? file : undefined
     };
     
     createMemory(memoryData);

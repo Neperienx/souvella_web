@@ -453,6 +453,9 @@ export async function createMemory(data: {
     
     let imageUrl = "";
     
+    // Default the type to what was passed in
+    let finalMemoryType = data.type;
+    
     // If there's a file, upload it to Firebase Storage
     if (data.file && data.type === "image") {
       try {
@@ -478,6 +481,7 @@ export async function createMemory(data: {
         console.error("Error uploading file to Firebase Storage:", uploadError);
         // If file upload fails, we'll continue with text-only memory
         console.log("Continuing with text-only memory");
+        finalMemoryType = "text"; // Force to text if image upload fails
       }
     }
       
@@ -485,7 +489,7 @@ export async function createMemory(data: {
     const memoryData: any = {
       userId: data.userId,
       relationshipId: relationshipIdString, // Store as string for consistency
-      type: data.type,
+      type: finalMemoryType, // Use the possibly updated type
       content: data.content || "",
       createdAt: serverTimestamp(),
       thumbsUpCount: 0,
@@ -547,8 +551,8 @@ export async function createMemory(data: {
       id: docRef.id, // Keep ID as string to match Firebase document ID
       userId: data.userId, // Keep as string to match Firebase user ID
       relationshipId: data.relationshipId,
-      type: data.type as MemoryType,
-      content: data.type === "image" && imageUrl ? imageUrl : data.content,
+      type: finalMemoryType as MemoryType, // Use the possibly updated type
+      content: finalMemoryType === "image" && imageUrl ? imageUrl : data.content,
       caption: data.caption || null,
       imageUrl: imageUrl || null,
       createdAt: new Date(),
