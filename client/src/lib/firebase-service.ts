@@ -52,7 +52,7 @@ export interface Memory {
 }
 
 interface FirestoreDailyMemory {
-  relationshipId: number;
+  relationshipId: string; // Using string to match how it's stored in Firestore
   memoryIds: string[];
   date: Timestamp;
 }
@@ -360,15 +360,20 @@ async function updateDailyMemoriesDocument(
 // Get newly added memories for a relationship
 export async function getNewMemories(relationshipId: number): Promise<Memory[]> {
   try {
+    // Convert relationshipId to string for Firestore consistency
+    const relationshipIdString = relationshipId.toString();
+    
     // Get today's date at midnight for comparison
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    console.log(`Looking for new memories for relationship ${relationshipId} (${relationshipIdString})`);
     
     // Firestore requires an index for queries with multiple filters + orderBy
     // First get all memories for the relationship
     const q = query(
       memoriesCollection,
-      where("relationshipId", "==", relationshipId)
+      where("relationshipId", "==", relationshipIdString)
     );
 
     const querySnapshot = await getDocs(q);
@@ -415,9 +420,13 @@ export async function createMemory(data: {
   file?: File;
 }): Promise<Memory> {
   try {
+    // Convert relationshipId to string for storage consistency  
+    const relationshipIdString = data.relationshipId.toString();
+    
     console.log("Creating memory with data:", {
       userId: data.userId,
       relationshipId: data.relationshipId,
+      relationshipIdString,
       type: data.type,
       contentLength: data.content?.length,
       hasCaption: !!data.caption,
@@ -429,16 +438,16 @@ export async function createMemory(data: {
     // If there's a file, upload it to Firebase Storage
     if (data.file && data.type === "image") {
       console.log("Uploading file to Firebase Storage");
-      const storageRef = ref(storage, `memories/${data.relationshipId}/${Date.now()}_${data.file.name}`);
+      const storageRef = ref(storage, `memories/${relationshipIdString}/${Date.now()}_${data.file.name}`);
       const snapshot = await uploadBytes(storageRef, data.file);
       imageUrl = await getDownloadURL(snapshot.ref);
       console.log("File uploaded successfully, image URL obtained");
     }
-    
+      
     // Create memory document with required fields only
     const memoryData: any = {
       userId: data.userId,
-      relationshipId: data.relationshipId,
+      relationshipId: relationshipIdString, // Store as string for consistency
       type: data.type,
       content: data.content || "",
       createdAt: serverTimestamp(),
@@ -464,8 +473,7 @@ export async function createMemory(data: {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Convert relationshipId to string
-    const relationshipIdString = data.relationshipId.toString();
+    // relationshipIdString is already defined above
     
     const dailyMemoryQuery = query(
       dailyMemoriesCollection,
@@ -605,14 +613,19 @@ export async function reactToMemory(memoryId: string, userId: string): Promise<{
 // Mark memories as not new only if they weren't created today
 export async function markMemoriesAsViewed(relationshipId: number): Promise<void> {
   try {
+    // Convert relationshipId to string for Firestore consistency
+    const relationshipIdString = relationshipId.toString();
+    
     // Get today's date at midnight for comparison
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    console.log(`Marking memories as viewed for relationship ${relationshipId} (${relationshipIdString})`);
+    
     // Only query by relationshipId to avoid index requirement
     const q = query(
       memoriesCollection,
-      where("relationshipId", "==", relationshipId)
+      where("relationshipId", "==", relationshipIdString)
     );
     
     const querySnapshot = await getDocs(q);
@@ -666,10 +679,16 @@ export async function markMemoriesAsViewed(relationshipId: number): Promise<void
 // Select random memories for the daily view with weighted probabilities based on thumbs up
 export async function selectRandomMemoriesForDay(relationshipId: number, count: number = 3): Promise<Memory[]> {
   try {
+    // Convert relationshipId to string for consistency
+    const relationshipIdString = relationshipId.toString();
+    
+    console.log(`Selecting random memories for relationship ${relationshipId} (${relationshipIdString})`);
+    
     // Use only a single where condition to avoid index requirements
+    // Using the string version for Firebase consistency
     const q = query(
       memoriesCollection,
-      where("relationshipId", "==", relationshipId)
+      where("relationshipId", "==", relationshipIdString)
     );
     
     const querySnapshot = await getDocs(q);
