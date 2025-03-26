@@ -65,7 +65,10 @@ export default function HomePage() {
       <main className="container mx-auto px-4 py-6">
         {!relationship ? (
           // Show relationship dashboard if user has no relationship
-          <RelationshipDashboard userId={user?.uid || ""} />
+          <RelationshipDashboard 
+            userId={user?.uid || ""} 
+            onRelationshipCreated={showInviteModal}
+          />
         ) : (
           // Show memory content if user has a relationship
           <>
