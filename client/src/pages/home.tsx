@@ -9,6 +9,7 @@ import {
   useMarkMemoriesAsViewed
 } from "../hooks/use-memories";
 import { queryClient } from "@/lib/queryClient";
+import { Memory } from "@/lib/firebase-service";
 
 import Header from "../components/header";
 import DailyUpload from "../components/daily-upload";

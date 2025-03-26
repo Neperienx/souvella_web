@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useCreateMemory } from "../hooks/use-memories";
 import { useUserRelationship } from "../hooks/use-relationship";
 import { useCreateRelationship } from "../hooks/use-relationship";
-import { Memory } from "@shared/schema";
+import { Memory } from "@/lib/firebase-service";
 import { hasUploadedToday } from "../lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";

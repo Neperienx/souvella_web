@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatDate } from "../lib/utils";
-import { Memory } from "@shared/schema";
+import { Memory } from "@/lib/firebase-service";
 import MemoryCard from "./memory-card";
 
 interface DailyMemoriesProps {
