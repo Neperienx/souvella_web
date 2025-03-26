@@ -57,7 +57,7 @@ export default function InvitePartnerModal({ isOpen, onClose, inviteCode: propIn
       try {
         const result = await createRelationship(user.uid);
         // Force a refetch after creation to ensure we have the latest data
-        queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", user.uid] });
+        queryClient.invalidateQueries({ queryKey: ["relationships/user", user.uid] });
       } catch (error) {
         console.error("Error creating relationship:", error);
       }
@@ -72,7 +72,7 @@ export default function InvitePartnerModal({ isOpen, onClose, inviteCode: propIn
           inviteCode: data.inviteCode,
         });
         // Force a refetch after joining to ensure we have the latest data
-        queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", user.uid] });
+        queryClient.invalidateQueries({ queryKey: ["relationships/user", user.uid] });
       } catch (error) {
         console.error("Error joining relationship:", error);
       }

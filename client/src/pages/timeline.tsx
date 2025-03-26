@@ -54,7 +54,7 @@ export default function TimelinePage() {
         userName={user?.displayName || "User"} 
         notifications={2} 
         photoURL={user?.photoURL || undefined}
-        relationship={relationship}
+        relationship={relationship || undefined}
         onShowInvite={showInviteModal}
       />
       

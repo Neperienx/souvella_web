@@ -13,7 +13,7 @@ interface HeaderProps {
   userName: string;
   notifications: number;
   photoURL?: string;
-  relationship?: Relationship;
+  relationship?: Relationship | null;
   onShowInvite?: () => void;
 }
 
