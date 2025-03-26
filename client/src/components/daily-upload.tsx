@@ -8,10 +8,12 @@ import { useCreateRelationship } from "../hooks/use-relationship";
 import { Memory } from "@shared/schema";
 import { hasUploadedToday } from "../lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase";
 
-// Form schema
+// Form schema with optional caption field
 const memorySchema = z.object({
   content: z.string().min(1, "Please enter some text for your memory"),
+  caption: z.string().optional(),
 });
 
 type MemoryFormValues = z.infer<typeof memorySchema>;
@@ -80,21 +82,29 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       return;
     }
     
-    // Get user ID from the backend (not Firebase UID)
-    // For now, using a placeholder ID
-    const dbUserId = 1; // This should be fetched from the backend
+    // Get user ID from Firebase
+    const firebaseUid = auth.currentUser?.uid;
     
-    createMemory({
-      userId: dbUserId,
+    if (!firebaseUid) {
+      toast({
+        title: "Authentication Error",
+        description: "You need to be logged in to create memories.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Prepare memory data
+    const memoryData = {
+      userId: firebaseUid,
       relationshipId,
       type: memoryType,
       content: data.content,
-    });
+      caption: memoryType === "image" ? data.caption : undefined,
+      file: memoryType === "image" ? file || undefined : undefined
+    };
     
-    toast({
-      title: "Memory Saved!",
-      description: "Your memory has been saved and added to your collection.",
-    });
+    createMemory(memoryData);
     
     // Reset form
     form.reset();
@@ -126,6 +136,18 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
             
             {form.formState.errors.content && (
               <p className="text-red-500 text-sm">{form.formState.errors.content.message}</p>
+            )}
+            
+            {file && memoryType === "image" && (
+              <div className="mt-3">
+                <input
+                  {...form.register("caption")}
+                  placeholder="Add a caption to your photo..."
+                  className="w-full p-3 rounded-xl border border-gray-200 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-light)] focus:outline-none bg-white/90"
+                  disabled={isPending}
+                />
+                <p className="text-sm text-gray-500 mt-1">Add a handwritten-style note to your photo</p>
+              </div>
             )}
             
             <input

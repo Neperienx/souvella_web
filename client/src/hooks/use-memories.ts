@@ -3,11 +3,23 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Memory } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  getRelationshipMemories, 
+  getDailyMemories, 
+  getNewMemories,
+  createMemory as createFirestoreMemory, 
+  reactToMemory as reactToFirestoreMemory,
+  markMemoriesAsViewed
+} from "@/lib/firebase-service";
 
 // Hook to fetch all memories for a relationship
 export function useRelationshipMemories(relationshipId: number | null) {
   return useQuery<Memory[]>({
-    queryKey: ["/api/memories/relationship", relationshipId],
+    queryKey: ["memories", relationshipId],
+    queryFn: async () => {
+      if (!relationshipId) return [];
+      return getRelationshipMemories(relationshipId);
+    },
     enabled: !!relationshipId,
   });
 }
@@ -15,8 +27,37 @@ export function useRelationshipMemories(relationshipId: number | null) {
 // Hook to fetch daily memories
 export function useDailyMemories(relationshipId: number | null) {
   return useQuery<Memory[]>({
-    queryKey: ["/api/daily-memories", relationshipId],
+    queryKey: ["dailyMemories", relationshipId],
+    queryFn: async () => {
+      if (!relationshipId) return [];
+      return getDailyMemories(relationshipId);
+    },
     enabled: !!relationshipId,
+  });
+}
+
+// Hook to fetch new memories
+export function useNewMemories(relationshipId: number | null) {
+  return useQuery<Memory[]>({
+    queryKey: ["newMemories", relationshipId],
+    queryFn: async () => {
+      if (!relationshipId) return [];
+      return getNewMemories(relationshipId);
+    },
+    enabled: !!relationshipId,
+  });
+}
+
+// Hook to mark new memories as viewed
+export function useMarkMemoriesAsViewed(relationshipId: number | null) {
+  return useMutation({
+    mutationFn: async () => {
+      if (!relationshipId) return;
+      return markMemoriesAsViewed(relationshipId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["newMemories", relationshipId] });
+    }
   });
 }
 
@@ -26,18 +67,21 @@ export function useCreateMemory() {
   
   return useMutation({
     mutationFn: async (memory: {
-      userId: number;
+      userId: string;
       relationshipId: number;
       type: string;
       content: string;
+      caption?: string;
+      file?: File;
     }) => {
-      const res = await apiRequest("POST", "/api/memories", memory);
-      return res.json();
+      // Use Firestore to create the memory
+      return createFirestoreMemory(memory);
     },
     onSuccess: (_, variables) => {
-      // Invalidate both memories and daily memories
-      queryClient.invalidateQueries({ queryKey: ["/api/memories/relationship", variables.relationshipId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/daily-memories", variables.relationshipId] });
+      // Invalidate all memory queries
+      queryClient.invalidateQueries({ queryKey: ["memories", variables.relationshipId] });
+      queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
+      queryClient.invalidateQueries({ queryKey: ["newMemories", variables.relationshipId] });
       
       toast({
         title: "Memory Created",
@@ -57,14 +101,15 @@ export function useCreateMemory() {
 // Hook to like a memory
 export function useReactToMemory() {
   return useMutation({
-    mutationFn: async ({ memoryId, relationshipId }: { memoryId: number; relationshipId: number }) => {
-      const res = await apiRequest("POST", `/api/memories/${memoryId}/react`, {});
-      return res.json();
+    mutationFn: async ({ memoryId, relationshipId }: { memoryId: string; relationshipId: number }) => {
+      // Use Firestore to react to the memory
+      return reactToFirestoreMemory(memoryId);
     },
     onSuccess: (_, variables) => {
-      // Invalidate both memories and daily memories
-      queryClient.invalidateQueries({ queryKey: ["/api/memories/relationship", variables.relationshipId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/daily-memories", variables.relationshipId] });
+      // Invalidate all memory queries
+      queryClient.invalidateQueries({ queryKey: ["memories", variables.relationshipId] });
+      queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
+      queryClient.invalidateQueries({ queryKey: ["newMemories", variables.relationshipId] });
     },
   });
 }

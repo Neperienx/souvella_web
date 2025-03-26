@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth";
 import { useUserRelationship } from "../hooks/use-relationship";
-import { useDailyMemories, useRelationshipMemories } from "../hooks/use-memories";
+import { 
+  useDailyMemories, 
+  useRelationshipMemories, 
+  useNewMemories,
+  useMarkMemoriesAsViewed
+} from "../hooks/use-memories";
 import { queryClient } from "@/lib/queryClient";
 
 import Header from "../components/header";
@@ -11,6 +16,7 @@ import DailyMemories from "../components/daily-memories";
 import RelationshipDashboard from "../components/relationship-dashboard";
 import MobileNavigation from "../components/mobile-navigation";
 import InvitePartnerModal from "../components/invite-partner-modal";
+import MemoryCard from "../components/memory-card";
 import { formatDate } from "../lib/utils";
 
 export default function HomePage() {
@@ -24,13 +30,24 @@ export default function HomePage() {
   // Get daily memories for this relationship
   const { data: dailyMemories, isLoading: memoriesLoading } = useDailyMemories(relationship?.id || null);
   
-  // Get today's uploaded memories from this user
+  // Get all memories for this relationship
   const { data: allMemories } = useRelationshipMemories(relationship?.id || null);
-  const today = new Date().toISOString().split('T')[0];
-  const todaysUploadedMemories = allMemories?.filter(memory => {
-    const memoryDate = new Date(memory.createdAt).toISOString().split('T')[0];
-    return memoryDate === today && memory.userId === 1; // TODO: Replace with actual user ID
-  }) || [];
+  
+  // Get newly added memories
+  const { data: newMemories, isLoading: newMemoriesLoading } = useNewMemories(relationship?.id || null);
+  
+  // Mark new memories as viewed after 5 seconds
+  const { mutate: markAsViewed } = useMarkMemoriesAsViewed(relationship?.id || null);
+  
+  useEffect(() => {
+    if (newMemories && newMemories.length > 0) {
+      const timer = setTimeout(() => {
+        markAsViewed();
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [newMemories, markAsViewed]);
 
   // Handle navigation
   const handleTimelineClick = () => {
@@ -81,29 +98,35 @@ export default function HomePage() {
               memories={dailyMemories || []}
             />
             
-            {todaysUploadedMemories.length > 0 && (
+            {/* New Memories Section */}
+            {newMemories && newMemories.length > 0 && (
               <section className="mb-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-serif text-xl">Your Uploaded Memory</h2>
+                  <h2 className="font-serif text-xl text-[var(--primary-dark)]">✨ New Memories</h2>
                   <span className="font-script text-lg text-[var(--primary-dark)]">{formatDate(new Date())}</span>
                 </div>
                 
-                <div className="grid grid-cols-1 gap-4">
-                  {todaysUploadedMemories.map((memory, index) => (
-                    <div key={memory.id} className="bg-[var(--primary-light)]/40 backdrop-blur-sm rounded-xl p-4 shadow-md">
-                      <p className="font-medium mb-1">Today's Upload:</p>
-                      <p className="text-[var(--charcoal)]">{memory.content}</p>
-                      <div className="flex justify-end mt-2">
-                        <span className="text-sm text-[var(--charcoal)]/60">
-                          Saved at {new Date(memory.createdAt).toLocaleTimeString()}
-                        </span>
-                      </div>
+                <div className="grid grid-cols-1 gap-4 relative">
+                  <div className="absolute -top-2 left-4 -rotate-6 z-10">
+                    <div className="bg-yellow-300 p-2 font-script text-lg shadow-md transform rotate-3 animate-pulse">
+                      Just Added!
+                    </div>
+                  </div>
+                  
+                  {newMemories.map((memory, index) => (
+                    <div key={memory.id} className="relative mt-4">
+                      <MemoryCard 
+                        memory={memory} 
+                        tapePosition={index} 
+                        relationshipId={relationship?.id || 0} 
+                      />
                     </div>
                   ))}
                 </div>
               </section>
             )}
             
+            {/* Daily Memories Section */}
             <DailyMemories 
               memories={dailyMemories || []} 
               isLoading={memoriesLoading} 

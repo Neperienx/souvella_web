@@ -195,8 +195,8 @@ export async function createMemory(data: {
     relationshipId: data.relationshipId,
     type: data.type as MemoryType,
     content: data.content,
-    caption: data.caption,
-    imageUrl: imageUrl,
+    caption: data.caption || null,
+    imageUrl: imageUrl || null,
     createdAt: new Date(),
     thumbsUpCount: 0,
     isNew: true
@@ -229,10 +229,10 @@ export async function markMemoriesAsViewed(relationshipId: number): Promise<void
   
   const querySnapshot = await getDocs(q);
   
-  const batch = firestore.batch();
+  const batch = writeBatch(firestore);
   
-  querySnapshot.docs.forEach((doc) => {
-    batch.update(doc.ref, { isNew: false });
+  querySnapshot.docs.forEach((document) => {
+    batch.update(document.ref, { isNew: false });
   });
   
   await batch.commit();
