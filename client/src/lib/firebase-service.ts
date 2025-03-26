@@ -135,27 +135,46 @@ export async function createMemory(data: {
   caption?: string;
   file?: File;
 }): Promise<Memory> {
+  console.log("Creating memory with data:", JSON.stringify({
+    userId: data.userId,
+    relationshipId: data.relationshipId,
+    type: data.type,
+    content: data.content?.substring(0, 30) + "...",
+    hasCaption: !!data.caption,
+    hasFile: !!data.file
+  }));
+  
   let imageUrl = "";
   
   // If there's a file, upload it to Firebase Storage
   if (data.file && data.type === "image") {
+    console.log("Uploading file to Firebase Storage");
     const storageRef = ref(storage, `memories/${data.relationshipId}/${Date.now()}_${data.file.name}`);
     const snapshot = await uploadBytes(storageRef, data.file);
     imageUrl = await getDownloadURL(snapshot.ref);
+    console.log("File uploaded successfully, image URL obtained");
   }
   
   // Create memory document
-  const memoryData: FirestoreMemory = {
+  const memoryData: Partial<FirestoreMemory> = {
     userId: data.userId,
     relationshipId: data.relationshipId,
     type: data.type,
     content: data.type === "image" && imageUrl ? imageUrl : data.content,
-    caption: data.caption || undefined,
-    imageUrl: imageUrl || undefined,
     createdAt: serverTimestamp() as Timestamp,
     thumbsUpCount: 0,
     isNew: true // Mark as new when created
   };
+  
+  // Only add caption if it exists
+  if (data.caption) {
+    memoryData.caption = data.caption;
+  }
+  
+  // Only add imageUrl if it exists
+  if (imageUrl) {
+    memoryData.imageUrl = imageUrl;
+  }
   
   const docRef = await addDoc(memoriesCollection, memoryData);
   
@@ -171,21 +190,26 @@ export async function createMemory(data: {
   
   const dailyMemorySnapshot = await getDocs(dailyMemoryQuery);
   
-  if (dailyMemorySnapshot.empty) {
-    // Create a new daily memory
-    await addDoc(dailyMemoriesCollection, {
-      relationshipId: data.relationshipId,
-      memoryIds: [docRef.id],
-      date: serverTimestamp()
-    });
-  } else {
-    // Update existing daily memory
-    const dailyMemoryDoc = dailyMemorySnapshot.docs[0];
-    const dailyMemoryData = dailyMemoryDoc.data() as FirestoreDailyMemory;
-    
-    await updateDoc(dailyMemoryDoc.ref, {
-      memoryIds: [...(dailyMemoryData.memoryIds || []), docRef.id]
-    });
+  try {
+    if (dailyMemorySnapshot.empty) {
+      // Create a new daily memory
+      await addDoc(dailyMemoriesCollection, {
+        relationshipId: data.relationshipId,
+        memoryIds: [docRef.id],
+        date: serverTimestamp()
+      });
+    } else {
+      // Update existing daily memory
+      const dailyMemoryDoc = dailyMemorySnapshot.docs[0];
+      const dailyMemoryData = dailyMemoryDoc.data() as FirestoreDailyMemory;
+      
+      await updateDoc(dailyMemoryDoc.ref, {
+        memoryIds: [...(dailyMemoryData.memoryIds || []), docRef.id]
+      });
+    }
+  } catch (error) {
+    console.error("Error creating/updating daily memory:", error);
+    // Continue execution even if daily memory creation fails
   }
   
   // Return the created memory
