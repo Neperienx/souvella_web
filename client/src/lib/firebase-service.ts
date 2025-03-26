@@ -109,49 +109,89 @@ export async function getRelationshipMemories(relationshipId: number): Promise<M
 
 // Get today's memories for a relationship
 export async function getDailyMemories(relationshipId: number): Promise<Memory[]> {
-  // Get today's date at midnight
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  // Create a query to get the daily memories document for today
-  const q = query(
-    dailyMemoriesCollection,
-    where("relationshipId", "==", relationshipId),
-    where("date", ">=", today)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  // If no daily memories exist for today, return an empty array
-  if (querySnapshot.empty) {
-    return [];
-  }
-  
-  // Get the memory IDs from the daily memories document
-  const dailyMemory = querySnapshot.docs[0].data() as FirestoreDailyMemory;
-  
-  // If there are no memory IDs, return an empty array
-  if (!dailyMemory.memoryIds || dailyMemory.memoryIds.length === 0) {
-    return [];
-  }
-  
-  // Get the memories from the memories collection
-  const memories: Memory[] = [];
-  
-  for (const memoryId of dailyMemory.memoryIds) {
-    const memoryDoc = await getDoc(doc(memoriesCollection, memoryId));
-    if (memoryDoc.exists()) {
-      memories.push(convertToMemory(memoryDoc));
+  try {
+    // Convert relationshipId to string to match how it's stored
+    const relationshipIdString = relationshipId.toString();
+    
+    console.log(`Fetching daily memories for relationship ${relationshipId} (${relationshipIdString})`);
+    
+    // Get today's date at midnight
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Create a query to get the daily memories document for today
+    const q = query(
+      dailyMemoriesCollection,
+      where("relationshipId", "==", relationshipIdString),
+      where("date", ">=", today)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    // If no daily memories exist for today, try to generate some
+    if (querySnapshot.empty) {
+      console.log(`No daily memories found for relationship ${relationshipId}. Will attempt to select random memories.`);
+      const randomMemories = await selectRandomMemoriesForDay(relationshipId, 3);
+      console.log(`Generated ${randomMemories.length} random memories for daily view.`);
+      
+      // Create a daily memory document with the random memories
+      if (randomMemories.length > 0) {
+        const memoryIds = randomMemories.map(memory => memory.id);
+        await updateDailyMemoriesDocument(relationshipId, memoryIds, today);
+        return randomMemories;
+      }
+      return [];
     }
+    
+    // Get the memory IDs from the daily memories document
+    const dailyMemory = querySnapshot.docs[0].data() as FirestoreDailyMemory;
+    console.log(`Found daily memory document for relationship ${relationshipId}`);
+    
+    // Log the document for debugging
+    console.log(`Daily memory document data:`, {
+      relationshipId: dailyMemory.relationshipId,
+      date: dailyMemory.date ? dailyMemory.date.toDate().toISOString() : 'No date',
+      memoryIds: dailyMemory.memoryIds || [],
+      memoryCount: dailyMemory.memoryIds ? dailyMemory.memoryIds.length : 0
+    });
+    
+    // If there are no memory IDs, return an empty array
+    if (!dailyMemory.memoryIds || dailyMemory.memoryIds.length === 0) {
+      console.log(`No memory IDs found in daily memory document.`);
+      return [];
+    }
+    
+    // Get the memories from the memories collection
+    const memories: Memory[] = [];
+    
+    for (const memoryId of dailyMemory.memoryIds) {
+      console.log(`Fetching memory with ID: ${memoryId}`);
+      const memoryDoc = await getDoc(doc(memoriesCollection, memoryId));
+      if (memoryDoc.exists()) {
+        const memory = convertToMemory(memoryDoc);
+        memories.push(memory);
+        console.log(`Memory found: ${memory.id}, type: ${memory.type}, thumbsUp: ${memory.thumbsUpCount}`);
+      } else {
+        console.log(`Memory ${memoryId} not found`);
+      }
+    }
+    
+    console.log(`Retrieved ${memories.length}/${dailyMemory.memoryIds.length} memories for daily view`);
+    
+    return memories;
+  } catch (error) {
+    console.error("Error getting daily memories:", error);
+    return []; // Return empty array in case of error
   }
-  
-  return memories;
 }
 
 // Regenerate daily memories (for reroll feature)
 export async function regenerateDailyMemories(relationshipId: number, count: number = 3): Promise<Memory[]> {
   try {
-    console.log(`Regenerating daily memories for relationship ${relationshipId}`);
+    // Convert relationshipId to string for Firestore consistency
+    const relationshipIdString = relationshipId.toString();
+    
+    console.log(`Regenerating daily memories for relationship ${relationshipId} (${relationshipIdString})`);
     
     // Get today's date at midnight
     const today = new Date();
@@ -275,10 +315,22 @@ async function updateDailyMemoriesDocument(
   today: Date
 ): Promise<void> {
   try {
+    // Convert relationshipId to string to match how it's stored in Firestore
+    const relationshipIdString = relationshipId.toString();
+    
+    console.log(`Updating daily memories for relationship ${relationshipId} (${relationshipIdString}), with ${memoryIds.length} memory IDs`);
+    
+    // Debug check the types
+    console.log('Types check:', {
+      relationshipId: typeof relationshipId,
+      relationshipIdString: typeof relationshipIdString,
+      firstMemoryId: memoryIds.length > 0 ? typeof memoryIds[0] : 'none'
+    });
+    
     // Get the existing daily memory document, if any
     const q = query(
       dailyMemoriesCollection,
-      where("relationshipId", "==", relationshipId),
+      where("relationshipId", "==", relationshipIdString),
       where("date", ">=", today)
     );
     
@@ -287,7 +339,7 @@ async function updateDailyMemoriesDocument(
     if (querySnapshot.empty) {
       // If no daily memories exist for today, create a new one
       await addDoc(dailyMemoriesCollection, {
-        relationshipId,
+        relationshipId: relationshipIdString, // Store as string
         memoryIds,
         date: serverTimestamp()
       });
@@ -412,9 +464,12 @@ export async function createMemory(data: {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    // Convert relationshipId to string
+    const relationshipIdString = data.relationshipId.toString();
+    
     const dailyMemoryQuery = query(
       dailyMemoriesCollection,
-      where("relationshipId", "==", data.relationshipId),
+      where("relationshipId", "==", relationshipIdString),
       where("date", ">=", today)
     );
     
@@ -424,7 +479,7 @@ export async function createMemory(data: {
       if (dailyMemorySnapshot.empty) {
         // Create a new daily memory
         await addDoc(dailyMemoriesCollection, {
-          relationshipId: data.relationshipId,
+          relationshipId: relationshipIdString,
           memoryIds: [docRef.id],
           date: serverTimestamp()
         });

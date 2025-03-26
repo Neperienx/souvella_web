@@ -32,9 +32,25 @@ export function useDailyMemories(relationshipId: number | null) {
     queryKey: ["dailyMemories", relationshipId],
     queryFn: async () => {
       if (!relationshipId) return [];
-      return getDailyMemories(relationshipId);
+      console.log(`Fetching daily memories in queryFn for relationship ${relationshipId}`);
+      
+      try {
+        const memories = await getDailyMemories(relationshipId);
+        console.log(`Successfully retrieved ${memories.length} daily memories:`, 
+          memories.map(m => ({ id: m.id, type: m.type, thumbsUp: m.thumbsUpCount }))
+        );
+        return memories;
+      } catch (error) {
+        console.error(`Error fetching daily memories:`, error);
+        throw error;
+      }
     },
     enabled: !!relationshipId,
+    // Refresh daily memories every minute
+    refetchInterval: 60 * 1000, 
+    // Use optimistic updates to show the loading state then the data
+    staleTime: 0,
+    refetchOnWindowFocus: true
   });
 }
 
@@ -169,8 +185,17 @@ export function useRerollDailyMemories() {
       relationshipId: number; 
       count?: number;
     }) => {
+      console.log(`Starting memory reroll for relationship ${relationshipId}, count: ${count}`);
+      
       // Use Firestore to regenerate daily memories
-      return regenerateDailyMemories(relationshipId, count);
+      const memories = await regenerateDailyMemories(relationshipId, count);
+      
+      // Log the memories for debugging
+      console.log(`Reroll completed. Selected ${memories.length} memories:`, 
+        memories.map(m => ({ id: m.id, type: m.type, thumbsUp: m.thumbsUpCount }))
+      );
+      
+      return memories;
     },
     onSuccess: (result, variables) => {
       // Show toast with the result message
@@ -179,10 +204,24 @@ export function useRerollDailyMemories() {
         description: `New selection of ${result.length} memories has been generated!`,
       });
       
-      // Invalidate daily memories query
-      queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
+      // Force refetch instead of just invalidating to ensure immediate update
+      queryClient.invalidateQueries({ 
+        queryKey: ["dailyMemories", variables.relationshipId],
+        refetchType: 'all'  // Force immediate refetch
+      });
+      
+      // If no memories were selected, wait a bit and refetch again
+      if (result.length === 0) {
+        setTimeout(() => {
+          queryClient.invalidateQueries({ 
+            queryKey: ["dailyMemories", variables.relationshipId],
+            refetchType: 'all'
+          });
+        }, 1000);
+      }
     },
     onError: (error) => {
+      console.error("Error during reroll:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to reroll memories",
