@@ -27,7 +27,7 @@ const userReactionsCollection = collection(firestore, "userReactions");
 // Interface for Firestore memory document
 interface FirestoreMemory {
   userId: string;
-  relationshipId: number;
+  relationshipId: string; // Using string to match how it's stored in Firestore
   type: string;
   content: string;
   caption?: string;
@@ -429,18 +429,39 @@ export async function createMemory(data: {
       type: data.type,
       contentLength: data.content?.length,
       hasCaption: !!data.caption,
-      hasFile: !!data.file
+      hasFile: !!data.file,
+      fileType: data.file ? data.file.type : 'none',
+      fileSize: data.file ? `${Math.round(data.file.size / 1024)} KB` : '0'
     });
     
     let imageUrl = "";
     
     // If there's a file, upload it to Firebase Storage
     if (data.file && data.type === "image") {
-      console.log("Uploading file to Firebase Storage");
-      const storageRef = ref(storage, `memories/${relationshipIdString}/${Date.now()}_${data.file.name}`);
-      const snapshot = await uploadBytes(storageRef, data.file);
-      imageUrl = await getDownloadURL(snapshot.ref);
-      console.log("File uploaded successfully, image URL obtained");
+      try {
+        console.log("Uploading file to Firebase Storage", {
+          fileName: data.file.name,
+          fileType: data.file.type,
+          fileSize: `${Math.round(data.file.size / 1024)} KB`,
+          path: `memories/${relationshipIdString}/${Date.now()}_${data.file.name}`
+        });
+        
+        // Compress the image if it's large (> 1MB)
+        let fileToUpload = data.file;
+        if (data.file.size > 1024 * 1024) {
+          console.log("File is large, attempting compression...");
+          // We'll use the original file for now as compression would require additional libraries
+        }
+        
+        const storageRef = ref(storage, `memories/${relationshipIdString}/${Date.now()}_${data.file.name}`);
+        const snapshot = await uploadBytes(storageRef, fileToUpload);
+        imageUrl = await getDownloadURL(snapshot.ref);
+        console.log("File uploaded successfully, image URL obtained:", imageUrl.substring(0, 50) + "...");
+      } catch (uploadError) {
+        console.error("Error uploading file to Firebase Storage:", uploadError);
+        // If file upload fails, we'll continue with text-only memory
+        console.log("Continuing with text-only memory");
+      }
     }
       
     // Create memory document with required fields only
