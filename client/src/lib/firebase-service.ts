@@ -459,7 +459,7 @@ export async function createMemory(data: {
     // If there's a file, upload it to Firebase Storage
     if (data.file && data.type === "image") {
       try {
-        console.log("Uploading file to Firebase Storage", {
+        console.log("UPLOAD DEBUG: Starting image upload process", {
           fileName: data.file.name,
           fileType: data.file.type,
           fileSize: `${Math.round(data.file.size / 1024)} KB`,
@@ -469,18 +469,32 @@ export async function createMemory(data: {
         // Compress the image if it's large (> 1MB)
         let fileToUpload = data.file;
         if (data.file.size > 1024 * 1024) {
-          console.log("File is large, attempting compression...");
+          console.log("UPLOAD DEBUG: File is large, would do compression in future...");
           // We'll use the original file for now as compression would require additional libraries
         }
         
-        const storageRef = ref(storage, `memories/${relationshipIdString}/${Date.now()}_${data.file.name}`);
+        const timestamp = Date.now();
+        const filename = `${timestamp}_${data.file.name}`;
+        const filePath = `memories/${relationshipIdString}/${filename}`;
+        
+        console.log(`UPLOAD DEBUG: Creating Firebase storage reference to ${filePath}`);
+        const storageRef = ref(storage, filePath);
+        
+        console.log("UPLOAD DEBUG: Beginning uploadBytes operation");
         const snapshot = await uploadBytes(storageRef, fileToUpload);
+        console.log("UPLOAD DEBUG: Upload completed successfully, getting download URL");
+        
         imageUrl = await getDownloadURL(snapshot.ref);
-        console.log("File uploaded successfully, image URL obtained:", imageUrl.substring(0, 50) + "...");
+        console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl.substring(0, 50) + "...");
       } catch (uploadError) {
-        console.error("Error uploading file to Firebase Storage:", uploadError);
+        console.error("UPLOAD DEBUG ERROR: Failed to upload file to Firebase Storage:", uploadError);
+        // Log more details about the error
+        if (uploadError instanceof Error) {
+          console.error("UPLOAD DEBUG ERROR: Error message:", uploadError.message);
+          console.error("UPLOAD DEBUG ERROR: Error stack:", uploadError.stack);
+        }
         // If file upload fails, we'll continue with text-only memory
-        console.log("Continuing with text-only memory");
+        console.log("UPLOAD DEBUG: Continuing with text-only memory");
         finalMemoryType = "text"; // Force to text if image upload fails
       }
     }

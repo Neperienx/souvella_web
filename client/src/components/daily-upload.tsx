@@ -60,21 +60,57 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
-      setFile(selectedFile);
       
-      // Create a preview URL for the image
-      const objectUrl = URL.createObjectURL(selectedFile);
-      setPreviewUrl(objectUrl);
+      console.log("FILE DEBUG: File selected:", {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: `${Math.round(selectedFile.size / 1024)} KB`
+      });
       
-      // Set a default value for the content field if empty
-      if (!form.getValues('content')) {
-        form.setValue('content', 'Image memory');
+      // Validate file type
+      if (!selectedFile.type.startsWith('image/')) {
+        console.error("FILE DEBUG: Invalid file type:", selectedFile.type);
+        toast({
+          title: "Invalid file",
+          description: "Please select an image file (JPEG, PNG, etc.)",
+          variant: "destructive"
+        });
+        return;
       }
+      
+      try {
+        console.log("FILE DEBUG: Creating preview URL");
+        // Create a preview URL for the image
+        const objectUrl = URL.createObjectURL(selectedFile);
+        
+        // Set the state with file information
+        setFile(selectedFile);
+        setPreviewUrl(objectUrl);
+        setMemoryType("image");
+        console.log("FILE DEBUG: Preview URL created successfully");
+        
+        // Set a default value for the content field if empty
+        if (!form.getValues('content')) {
+          form.setValue('content', 'Image memory');
+        }
+      } catch (error) {
+        console.error("FILE DEBUG: Error creating preview:", error);
+        toast({
+          title: "Error processing image",
+          description: "There was a problem with this image. Please try another one.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      console.log("FILE DEBUG: No file selected or file selection cancelled");
     }
   };
 
   const onSubmit = (data: MemoryFormValues) => {
+    console.log("SUBMIT DEBUG: Starting memory submission process");
+    
     if (!relationshipId) {
+      console.log("SUBMIT DEBUG: No relationship ID found");
       toast({
         title: "No Relationship Found",
         description: "You need to create or join a relationship before sharing memories.",
@@ -82,6 +118,8 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       });
       return;
     }
+    
+    console.log("SUBMIT DEBUG: Using relationship ID:", relationshipId);
     
     // Debug mode: remove daily upload limit for testing
     // if (alreadyUploadedToday) {
@@ -97,6 +135,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     const firebaseUid = auth.currentUser?.uid;
     
     if (!firebaseUid) {
+      console.log("SUBMIT DEBUG: User not logged in");
       toast({
         title: "Authentication Error",
         description: "You need to be logged in to create memories.",
@@ -105,8 +144,11 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       return;
     }
     
+    console.log("SUBMIT DEBUG: User authenticated with ID:", firebaseUid);
+    
     // Determine the correct memory type based on whether a file is selected
     const actualMemoryType = (memoryType === "image" && file) ? "image" : "text";
+    console.log(`SUBMIT DEBUG: Memory type set to ${actualMemoryType} (selected type was ${memoryType}, file present: ${!!file})`);
     
     // Prepare memory data with correct file handling
     const memoryData = {
@@ -118,13 +160,26 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       file: actualMemoryType === "image" && file ? file : undefined
     };
     
+    console.log("SUBMIT DEBUG: Prepared memory data:", {
+      userId: firebaseUid,
+      relationshipId,
+      type: actualMemoryType,
+      contentLength: data.content?.length || 0,
+      hasCaption: !!memoryData.caption,
+      hasFile: !!memoryData.file,
+      fileType: memoryData.file ? memoryData.file.type : 'none',
+      fileSize: memoryData.file ? `${Math.round(memoryData.file.size / 1024)} KB` : '0'
+    });
+    
     createMemory(memoryData);
+    console.log("SUBMIT DEBUG: Memory creation mutation triggered");
     
     // Reset form
     form.reset();
     setFile(null);
     setPreviewUrl(null);
     setMemoryType("text");
+    console.log("SUBMIT DEBUG: Form and state reset");
   };
 
   return (

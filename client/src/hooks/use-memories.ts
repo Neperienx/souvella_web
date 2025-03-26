@@ -92,10 +92,37 @@ export function useCreateMemory() {
       caption?: string;
       file?: File;
     }) => {
-      // Use Firestore to create the memory
-      return createFirestoreMemory(memory);
+      console.log("MUTATION DEBUG: Starting memory creation process", {
+        userId: memory.userId,
+        relationshipId: memory.relationshipId,
+        type: memory.type,
+        hasFile: !!memory.file,
+        contentLength: memory.content?.length || 0
+      });
+      
+      try {
+        // Use Firestore to create the memory
+        const result = await createFirestoreMemory(memory);
+        console.log("MUTATION DEBUG: Memory created successfully", {
+          memoryId: result.id,
+          type: result.type
+        });
+        return result;
+      } catch (error) {
+        console.error("MUTATION DEBUG: Error creating memory:", error);
+        if (error instanceof Error) {
+          console.error("MUTATION DEBUG: Error message:", error.message);
+          console.error("MUTATION DEBUG: Error stack:", error.stack);
+        }
+        throw error; // Re-throw to trigger onError
+      }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
+      console.log("MUTATION DEBUG: Mutation success callback triggered", {
+        memoryId: result.id, 
+        relationshipId: variables.relationshipId
+      });
+      
       // Invalidate all memory queries
       queryClient.invalidateQueries({ queryKey: ["memories", variables.relationshipId] });
       queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
@@ -107,9 +134,25 @@ export function useCreateMemory() {
       });
     },
     onError: (error) => {
+      console.error("MUTATION DEBUG: Mutation error callback triggered", error);
+      
+      let errorMessage = "Failed to create memory";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Check for specific error types
+        if (errorMessage.includes("storage") || errorMessage.includes("upload")) {
+          errorMessage = "Failed to upload image. Please try a different image or try again later.";
+        } else if (errorMessage.includes("permission") || errorMessage.includes("unauthorized")) {
+          errorMessage = "You don't have permission to create memories in this relationship.";
+        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        }
+      }
+      
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create memory",
+        title: "Error Creating Memory",
+        description: errorMessage,
         variant: "destructive",
       });
     },
