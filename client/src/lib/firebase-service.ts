@@ -156,11 +156,125 @@ export async function regenerateDailyMemories(relationshipId: number, count: num
     // Get today's date at midnight
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // First, get all available memories for this relationship
+    const q1 = query(
+      memoriesCollection,
+      where("relationshipId", "==", relationshipId)
+    );
     
-    // First, select new random memories using the weighted algorithm
-    const newMemories = await selectRandomMemoriesForDay(relationshipId, count);
-    console.log(`Selected ${newMemories.length} new memories for daily reroll`);
+    const memoriesSnapshot = await getDocs(q1);
     
+    if (memoriesSnapshot.empty) {
+      console.log(`No memories found for relationship ${relationshipId}`);
+      return [];
+    }
+    
+    console.log(`Found ${memoriesSnapshot.docs.length} total memories to select from`);
+    
+    // Convert all memories to Memory objects
+    const allMemories = memoriesSnapshot.docs.map(convertToMemory);
+    
+    // If we have fewer memories than requested, return all of them
+    if (allMemories.length <= count) {
+      console.log(`Fewer memories than requested count, returning all ${allMemories.length} memories`);
+      
+      // Get the memory IDs to store in daily memories
+      const memoryIds = allMemories.map(memory => memory.id);
+      
+      // Create or update daily memories document
+      await updateDailyMemoriesDocument(relationshipId, memoryIds, today);
+      
+      return allMemories;
+    }
+    
+    // Calculate weights for weighted random selection
+    const weights: number[] = [];
+    let totalWeight = 0;
+    let totalThumbsUp = 0;
+    
+    // Calculate total thumbs up across all memories
+    allMemories.forEach(memory => {
+      totalThumbsUp += memory.thumbsUpCount;
+    });
+    
+    // Calculate probability weight for each memory
+    // Weight = (1 + thumbsUpCount) / (total memories + total thumbs up)
+    allMemories.forEach(memory => {
+      const weight = (1 + memory.thumbsUpCount) / (allMemories.length + totalThumbsUp);
+      weights.push(weight);
+      totalWeight += weight;
+    });
+    
+    // Debug log the weights
+    console.log("Memory weights sample:", weights.slice(0, 3).map((w, i) => ({
+      id: allMemories[i].id,
+      thumbsUp: allMemories[i].thumbsUpCount,
+      weight: w
+    })));
+    
+    // Select memories using weighted probabilities
+    const selectedMemories: Memory[] = [];
+    const selectedIndices = new Set<number>();
+    
+    // Helper function for weighted random selection
+    const weightedRandom = () => {
+      let randomValue = Math.random() * totalWeight;
+      
+      for (let i = 0; i < weights.length; i++) {
+        if (!selectedIndices.has(i)) {  // Skip already selected indices
+          randomValue -= weights[i];
+          if (randomValue <= 0) {
+            return i;
+          }
+        }
+      }
+      
+      // Fallback - find first unselected memory
+      for (let i = 0; i < allMemories.length; i++) {
+        if (!selectedIndices.has(i)) {
+          return i;
+        }
+      }
+      
+      return -1; // Should never reach here if count <= allMemories.length
+    };
+    
+    // Select memories
+    while (selectedMemories.length < count && selectedIndices.size < allMemories.length) {
+      const index = weightedRandom();
+      
+      if (index >= 0 && !selectedIndices.has(index)) {
+        selectedIndices.add(index);
+        selectedMemories.push(allMemories[index]);
+        
+        // Debug log
+        console.log(`Selected memory ${allMemories[index].id} with ${allMemories[index].thumbsUpCount} thumbs up`);
+      }
+    }
+    
+    console.log(`Selected ${selectedMemories.length} memories for daily view`);
+    
+    // Get the memory IDs from the selected memories
+    const memoryIds = selectedMemories.map(memory => memory.id);
+    
+    // Create or update daily memories document
+    await updateDailyMemoriesDocument(relationshipId, memoryIds, today);
+    
+    return selectedMemories;
+  } catch (error) {
+    console.error("Error regenerating daily memories:", error);
+    return [];
+  }
+}
+
+// Helper function to create or update daily memories document
+async function updateDailyMemoriesDocument(
+  relationshipId: number, 
+  memoryIds: string[], 
+  today: Date
+): Promise<void> {
+  try {
     // Get the existing daily memory document, if any
     const q = query(
       dailyMemoriesCollection,
@@ -169,9 +283,6 @@ export async function regenerateDailyMemories(relationshipId: number, count: num
     );
     
     const querySnapshot = await getDocs(q);
-    
-    // Get the memory IDs from the selected memories
-    const memoryIds = newMemories.map(memory => memory.id);
     
     if (querySnapshot.empty) {
       // If no daily memories exist for today, create a new one
@@ -189,11 +300,8 @@ export async function regenerateDailyMemories(relationshipId: number, count: num
       });
       console.log(`Updated existing daily memories document with ${memoryIds.length} memories`);
     }
-    
-    return newMemories;
   } catch (error) {
-    console.error("Error regenerating daily memories:", error);
-    return [];
+    console.error("Error updating daily memories document:", error);
   }
 }
 
