@@ -127,6 +127,10 @@ export async function getDailyMemories(relationshipId: number): Promise<Memory[]
 // Get newly added memories for a relationship
 export async function getNewMemories(relationshipId: number): Promise<Memory[]> {
   try {
+    // Get today's date at midnight for comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     // Firestore requires an index for queries with multiple filters + orderBy
     // First get all memories for the relationship
     const q = query(
@@ -136,11 +140,23 @@ export async function getNewMemories(relationshipId: number): Promise<Memory[]> 
 
     const querySnapshot = await getDocs(q);
     
-    // Then filter by isNew and sort client-side
+    // Then filter by isNew flag or created today, and sort client-side
     const newMemories = querySnapshot.docs
       .filter(doc => {
         const data = doc.data() as FirestoreMemory;
-        return data.isNew === true;
+        
+        // Include if explicitly marked as new
+        if (data.isNew === true) {
+          return true;
+        }
+        
+        // Or include if created today (even if not marked as new)
+        if (data.createdAt) {
+          const createdDate = data.createdAt.toDate();
+          return createdDate >= today;
+        }
+        
+        return false;
       })
       .map(convertToMemory)
       .sort((a, b) => {
@@ -148,6 +164,7 @@ export async function getNewMemories(relationshipId: number): Promise<Memory[]> 
         return b.createdAt.getTime() - a.createdAt.getTime();
       });
     
+    console.log(`Found ${newMemories.length} new memories for relationship ${relationshipId}`);
     return newMemories;
   } catch (error) {
     console.error("Error getting new memories:", error);
@@ -280,9 +297,13 @@ export async function reactToMemory(memoryId: string): Promise<void> {
   });
 }
 
-// Mark memories as not new (after they've been viewed)
+// Mark memories as not new only if they weren't created today
 export async function markMemoriesAsViewed(relationshipId: number): Promise<void> {
   try {
+    // Get today's date at midnight for comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     // Only query by relationshipId to avoid index requirement
     const q = query(
       memoriesCollection,
@@ -291,26 +312,47 @@ export async function markMemoriesAsViewed(relationshipId: number): Promise<void
     
     const querySnapshot = await getDocs(q);
     
-    // Filter documents client-side to find those that are new
-    const newMemoryDocs = querySnapshot.docs.filter(doc => {
+    // Filter documents client-side to find those that should be marked as "not new"
+    // Only mark as "not new" if they weren't created today and are currently marked as "new"
+    const memoriesToUpdate = querySnapshot.docs.filter(doc => {
       const data = doc.data() as FirestoreMemory;
-      return data.isNew === true;
+      
+      // Skip if it's not marked as new
+      if (data.isNew !== true) {
+        return false;
+      }
+      
+      // If there's no createdAt timestamp, skip it
+      if (!data.createdAt) {
+        return false;
+      }
+      
+      // Convert Firestore timestamp to Date
+      const createdDate = data.createdAt.toDate();
+      
+      // Keep as "new" if created today, otherwise mark as "not new"
+      const createdToday = createdDate >= today;
+      
+      // Only include it for update if it should be marked as NOT new
+      // (created before today but still has isNew=true)
+      return !createdToday;
     });
     
-    // If there are no new memories, return early
-    if (newMemoryDocs.length === 0) {
+    // If there are no memories to update, return early
+    if (memoriesToUpdate.length === 0) {
+      console.log("No memories need to be marked as 'not new'");
       return;
     }
     
-    // Update all new memories in a batch
+    // Update older memories (not created today) in a batch
     const batch = writeBatch(firestore);
     
-    newMemoryDocs.forEach((document) => {
+    memoriesToUpdate.forEach((document) => {
       batch.update(document.ref, { isNew: false });
     });
     
     await batch.commit();
-    console.log(`Marked ${newMemoryDocs.length} memories as viewed`);
+    console.log(`Marked ${memoriesToUpdate.length} memories as viewed (not created today)`);
   } catch (error) {
     console.error("Error marking memories as viewed:", error);
   }
