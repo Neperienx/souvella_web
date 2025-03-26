@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { formatDate, getTapePosition } from "../lib/utils";
 import { Memory } from "@shared/schema";
-import { useReactToMemory } from "../hooks/use-memories";
+import { useReactToMemory, useRemainingThumbsUp } from "../hooks/use-memories";
+import { useAuth } from "../hooks/use-auth";
 
 interface MemoryCardProps {
   memory: Memory;
@@ -12,11 +13,16 @@ interface MemoryCardProps {
 export default function MemoryCard({ memory, tapePosition, relationshipId }: MemoryCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const { mutate: reactToMemory, isPending } = useReactToMemory();
+  const { user } = useAuth();
+  const { data: remainingThumbsUp = 0 } = useRemainingThumbsUp(user?.uid || null);
 
   const handleThumbsUp = () => {
+    if (!user?.uid) return;
+    
     reactToMemory({ 
-      memoryId: String(memory.id), 
-      relationshipId 
+      memoryId: String(memory.id),
+      relationshipId,
+      userId: user.uid
     });
   };
 
@@ -103,13 +109,30 @@ export default function MemoryCard({ memory, tapePosition, relationshipId }: Mem
       
       {renderMemoryContent()}
       
-      <div className="flex justify-end">
+      <div className="flex justify-end space-x-2 items-center">
+        {remainingThumbsUp > 0 && (
+          <span className="text-xs text-[var(--accent-dark)] font-medium">
+            {remainingThumbsUp} {remainingThumbsUp === 1 ? 'thumb up' : 'thumbs up'} left today
+          </span>
+        )}
         <button
           onClick={handleThumbsUp}
-          disabled={isPending}
-          className="react-btn text-[var(--primary-dark)] hover:text-[var(--primary)] flex items-center space-x-1 py-1 px-3 rounded-full transition-colors"
+          disabled={isPending || remainingThumbsUp <= 0}
+          className={`react-btn flex items-center space-x-1 py-1 px-3 rounded-full transition-colors ${
+            remainingThumbsUp > 0 
+              ? 'text-[var(--primary-dark)] hover:text-[var(--primary)]' 
+              : 'text-gray-400 cursor-not-allowed'
+          }`}
+          title={remainingThumbsUp <= 0 ? "You've used all your thumbs up for today" : "Love this memory"}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            fill={remainingThumbsUp > 0 ? "none" : "currentColor"} 
+            viewBox="0 0 24 24" 
+            strokeWidth="1.5" 
+            stroke="currentColor" 
+            className="w-5 h-5"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
           </svg>
           <span>Love this</span>

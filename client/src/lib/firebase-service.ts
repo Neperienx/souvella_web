@@ -12,15 +12,17 @@ import {
   getDoc, 
   limit,
   QueryDocumentSnapshot,
-  writeBatch
+  writeBatch,
+  increment
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firestore, storage } from "./firebase";
 import { Memory, MemoryType } from "@shared/schema";
 
-// Memory collection reference
+// Collection references
 const memoriesCollection = collection(firestore, "memories");
 const dailyMemoriesCollection = collection(firestore, "dailyMemories");
+const userReactionsCollection = collection(firestore, "userReactions");
 
 // Interface for Firestore memory document
 interface FirestoreMemory {
@@ -39,6 +41,14 @@ interface FirestoreDailyMemory {
   relationshipId: number;
   memoryIds: string[];
   date: Timestamp;
+}
+
+// Interface for tracking user reactions (thumbs up)
+interface UserReaction {
+  userId: string;
+  memoryId: string;
+  createdAt: Timestamp;
+  date: string; // YYYY-MM-DD format for easier querying by day
 }
 
 // Convert Firestore document to Memory type
@@ -281,20 +291,89 @@ export async function createMemory(data: {
   }
 }
 
-// React to a memory (thumbs up)
-export async function reactToMemory(memoryId: string): Promise<void> {
-  const memoryRef = doc(memoriesCollection, memoryId);
-  const memoryDoc = await getDoc(memoryRef);
-  
-  if (!memoryDoc.exists()) {
-    throw new Error("Memory not found");
+// Helper function to format date as YYYY-MM-DD
+function formatDateForStorage(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// Get user's remaining thumbs up count for today
+export async function getUserRemainingThumbsUp(userId: string): Promise<number> {
+  try {
+    const MAX_DAILY_THUMBS_UP = 2;
+    const today = formatDateForStorage(new Date());
+    
+    // Query reactions from today for this user
+    const q = query(
+      userReactionsCollection,
+      where("userId", "==", userId),
+      where("date", "==", today)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const usedCount = querySnapshot.size;
+    
+    const remaining = Math.max(0, MAX_DAILY_THUMBS_UP - usedCount);
+    console.log(`User ${userId} has used ${usedCount} thumbs up today. Remaining: ${remaining}`);
+    
+    return remaining;
+  } catch (error) {
+    console.error("Error checking remaining thumbs up:", error);
+    return 0; // Default to 0 in case of error to prevent further reactions
   }
-  
-  const memoryData = memoryDoc.data() as FirestoreMemory;
-  
-  await updateDoc(memoryRef, {
-    thumbsUpCount: (memoryData.thumbsUpCount || 0) + 1
-  });
+}
+
+// React to a memory (thumbs up) with daily limit
+export async function reactToMemory(memoryId: string, userId: string): Promise<{ success: boolean, message: string }> {
+  try {
+    // Check if user has thumbs up remaining today
+    const remainingThumbsUp = await getUserRemainingThumbsUp(userId);
+    
+    if (remainingThumbsUp <= 0) {
+      return { 
+        success: false, 
+        message: "You've used all your thumbs up for today!" 
+      };
+    }
+    
+    // Get the memory document
+    const memoryRef = doc(memoriesCollection, memoryId);
+    const memoryDoc = await getDoc(memoryRef);
+    
+    if (!memoryDoc.exists()) {
+      return { 
+        success: false, 
+        message: "Memory not found" 
+      };
+    }
+    
+    // Get today's date for the reaction record
+    const today = new Date();
+    const dateString = formatDateForStorage(today);
+    
+    // Create a new reaction document
+    await addDoc(userReactionsCollection, {
+      userId,
+      memoryId,
+      createdAt: serverTimestamp(),
+      date: dateString
+    });
+    
+    // Increment the memory's thumbs up count
+    await updateDoc(memoryRef, {
+      thumbsUpCount: increment(1)
+    });
+    
+    return { 
+      success: true, 
+      message: `Thumbs up added! You have ${remainingThumbsUp - 1} left today.` 
+    };
+  } catch (error) {
+    console.error("Error adding thumbs up:", error);
+    return { 
+      success: false, 
+      message: "An error occurred while adding your thumbs up" 
+    };
+  }
 }
 
 // Mark memories as not new only if they weren't created today

@@ -9,7 +9,8 @@ import {
   getNewMemories,
   createMemory as createFirestoreMemory, 
   reactToMemory as reactToFirestoreMemory,
-  markMemoriesAsViewed
+  markMemoriesAsViewed,
+  getUserRemainingThumbsUp
 } from "@/lib/firebase-service";
 
 // Hook to fetch all memories for a relationship
@@ -98,18 +99,59 @@ export function useCreateMemory() {
   });
 }
 
-// Hook to like a memory
-export function useReactToMemory() {
-  return useMutation({
-    mutationFn: async ({ memoryId, relationshipId }: { memoryId: string; relationshipId: number }) => {
-      // Use Firestore to react to the memory
-      return reactToFirestoreMemory(memoryId);
+// Hook to get user's remaining thumbs up for today
+export function useRemainingThumbsUp(userId: string | null) {
+  return useQuery<number>({
+    queryKey: ["remainingThumbsUp", userId],
+    queryFn: async () => {
+      if (!userId) return 0;
+      return getUserRemainingThumbsUp(userId);
     },
-    onSuccess: (_, variables) => {
+    enabled: !!userId,
+    // Refresh every minute to ensure count is current
+    refetchInterval: 60 * 1000
+  });
+}
+
+// Hook to like a memory with daily limit
+export function useReactToMemory() {
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      memoryId, 
+      relationshipId, 
+      userId 
+    }: { 
+      memoryId: string; 
+      relationshipId: number;
+      userId: string;
+    }) => {
+      // Use Firestore to react to the memory with the thumbs up limit
+      return reactToFirestoreMemory(memoryId, userId);
+    },
+    onSuccess: (result, variables) => {
+      // Show toast with the result message
+      toast({
+        title: result.success ? "Thumbs Up!" : "Cannot Add Thumbs Up",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+      
       // Invalidate all memory queries
       queryClient.invalidateQueries({ queryKey: ["memories", variables.relationshipId] });
       queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
       queryClient.invalidateQueries({ queryKey: ["newMemories", variables.relationshipId] });
+      
+      // Also invalidate remaining thumbs up count
+      queryClient.invalidateQueries({ queryKey: ["remainingThumbsUp", variables.userId] });
     },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add thumbs up",
+        variant: "destructive",
+      });
+    }
   });
 }
