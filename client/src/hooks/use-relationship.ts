@@ -1,13 +1,22 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Relationship } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  getUserPrimaryRelationship, 
+  createRelationship, 
+  addUserToRelationship,
+  getRelationshipByInviteCode
+} from "@/lib/relationship-service";
 
-// Hook to fetch user's relationship
+// Hook to fetch user's primary relationship
 export function useUserRelationship(uid: string | null) {
-  return useQuery<Relationship>({
-    queryKey: ["/api/relationships/user", uid],
+  return useQuery<Relationship | null>({
+    queryKey: ["relationships/user", uid],
+    queryFn: async () => {
+      if (!uid) return null;
+      return await getUserPrimaryRelationship(uid);
+    },
     enabled: !!uid,
   });
 }
@@ -18,14 +27,24 @@ export function useCreateRelationship() {
   
   return useMutation({
     mutationFn: async (uid: string) => {
-      const res = await apiRequest("POST", "/api/relationships", { uid });
-      return res.json();
+      try {
+        // Create the relationship in Firebase
+        const newRelationship = await createRelationship();
+        
+        // Add the user to this relationship
+        await addUserToRelationship(uid, newRelationship.id);
+        
+        return newRelationship;
+      } catch (error) {
+        console.error("Error in createRelationship mutation:", error);
+        throw error;
+      }
     },
     onSuccess: (data, variables) => {
       // Immediately update the relationship query cache with the new data
-      queryClient.setQueryData(["/api/relationships/user", variables], data);
+      queryClient.setQueryData(["relationships/user", variables], data);
       // Also invalidate to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", variables] });
+      queryClient.invalidateQueries({ queryKey: ["relationships/user", variables] });
       
       toast({
         title: "Relationship Created",
@@ -35,6 +54,7 @@ export function useCreateRelationship() {
       return data;
     },
     onError: (error) => {
+      console.error("Error creating relationship:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create relationship",
@@ -50,14 +70,28 @@ export function useJoinRelationship() {
   
   return useMutation({
     mutationFn: async ({ uid, inviteCode }: { uid: string; inviteCode: string }) => {
-      const res = await apiRequest("POST", "/api/relationships/join", { uid, inviteCode });
-      return res.json();
+      try {
+        // Find the relationship by invite code
+        const relationship = await getRelationshipByInviteCode(inviteCode);
+        
+        if (!relationship) {
+          throw new Error("Invalid invite code. Please check and try again.");
+        }
+        
+        // Add the user to this relationship
+        await addUserToRelationship(uid, relationship.id);
+        
+        return relationship;
+      } catch (error) {
+        console.error("Error in joinRelationship mutation:", error);
+        throw error;
+      }
     },
     onSuccess: (data, variables) => {
       // Immediately update the relationship query cache with the new data
-      queryClient.setQueryData(["/api/relationships/user", variables.uid], data);
+      queryClient.setQueryData(["relationships/user", variables.uid], data);
       // Also invalidate to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", variables.uid] });
+      queryClient.invalidateQueries({ queryKey: ["relationships/user", variables.uid] });
       
       toast({
         title: "Joined Relationship",
@@ -67,6 +101,7 @@ export function useJoinRelationship() {
       return data;
     },
     onError: (error) => {
+      console.error("Error joining relationship:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to join relationship",

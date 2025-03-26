@@ -64,7 +64,7 @@ export default function HomePage() {
   // Show invite modal
   const showInviteModal = () => {
     // Force a refetch of relationship data before showing the modal
-    queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", user?.uid] });
+    queryClient.invalidateQueries({ queryKey: ["relationships/user", user?.uid] });
     setIsInviteModalOpen(true);
   };
 
@@ -85,7 +85,7 @@ export default function HomePage() {
         userName={user?.displayName || "User"} 
         notifications={2} 
         photoURL={user?.photoURL || undefined}
-        relationship={relationship}
+        relationship={relationship || undefined}
         onShowInvite={showInviteModal}
       />
       
