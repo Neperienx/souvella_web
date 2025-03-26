@@ -29,6 +29,9 @@ console.log("Firebase config (without sensitive data):", {
   hasAppId: !!import.meta.env.VITE_FIREBASE_APP_ID
 });
 
+// Explicitly log the full storage bucket for debugging
+console.log(`Storage bucket configured as: ${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`);
+
 // Initialize Firebase (only once)
 let app;
 try {

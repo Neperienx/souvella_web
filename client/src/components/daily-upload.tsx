@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useCreateMemory } from "../hooks/use-memories";
 import { useUserRelationship } from "../hooks/use-relationship";
 import { useCreateRelationship } from "../hooks/use-relationship";
-import { Memory } from "@/lib/firebase-service";
+import { Memory, checkFirebaseStorage } from "@/lib/firebase-service";
 import { hasUploadedToday } from "../lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
@@ -55,6 +55,52 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       title: "Coming Soon",
       description: "Voice recording will be available in a future update!",
     });
+  };
+  
+  // Function to test Firebase Storage
+  const handleTestStorage = async () => {
+    console.log("STORAGE TEST: Starting Firebase Storage test");
+    
+    toast({
+      title: "Testing Storage",
+      description: "Testing Firebase Storage connection...",
+    });
+    
+    try {
+      const result = await checkFirebaseStorage();
+      console.log("STORAGE TEST: Firebase Storage check result:", result);
+      
+      if (result) {
+        toast({
+          title: "Storage Test Passed",
+          description: "Firebase Storage is working properly. You can upload images!",
+        });
+      } else {
+        toast({
+          title: "Storage Test Failed",
+          description: "There was a problem connecting to Firebase Storage. Check console for details.",
+          variant: "destructive"
+        });
+        
+        toast({
+          title: "Storage Setup Reminder",
+          description: "Make sure Firebase Storage Rules in your Firebase console allow read/write access. Default rules may be too restrictive.",
+        });
+      }
+    } catch (error) {
+      console.error("STORAGE TEST: Error testing Firebase Storage:", error);
+      toast({
+        title: "Storage Test Error",
+        description: "An error occurred while testing Firebase Storage. Check console for details.",
+        variant: "destructive"
+      });
+      
+      // Suggest checking Firebase Storage rules
+      toast({
+        title: "Firebase Storage Rules",
+        description: "Check your Firebase Storage rules in the Firebase console. You may need to update them to: rules_version = '2'; service firebase.storage { match /b/{bucket}/o { match /{allPaths=**} { allow read, write: if request.auth != null; } } }",
+      });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,6 +305,18 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
                 </svg>
                 <span>Add Voice</span>
+              </button>
+              
+              <button 
+                type="button" 
+                onClick={handleTestStorage}
+                disabled={isPending}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-200 text-green-800 rounded-xl hover:bg-green-300 transition disabled:opacity-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                <span>Test Storage</span>
               </button>
             </div>
           </div>
