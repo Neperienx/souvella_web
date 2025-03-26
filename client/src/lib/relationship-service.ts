@@ -43,10 +43,12 @@ function generateInviteCode(length = 10): string {
 // Convert Firestore document to Relationship type
 function convertToRelationship(doc: QueryDocumentSnapshot): Relationship {
   const data = doc.data() as FirestoreRelationship;
+  // Use a safer way to convert IDs to numbers
+  const id = Number(doc.id);
   return {
-    id: parseInt(doc.id),
+    id: isNaN(id) ? 0 : id, // Use a default value if conversion fails
     inviteCode: data.inviteCode,
-    createdAt: data.createdAt.toDate()
+    createdAt: data.createdAt?.toDate() || new Date() // Handle potentially missing timestamp
   };
 }
 
@@ -91,6 +93,8 @@ export async function getRelationshipByInviteCode(code: string): Promise<Relatio
 // Get user's relationships
 export async function getUserRelationships(userId: string): Promise<Relationship[]> {
   try {
+    console.log("Getting relationships for user", userId);
+    
     // First get all userRelationship documents for this user
     const q = query(
       userRelationshipsCollection,
@@ -100,8 +104,11 @@ export async function getUserRelationships(userId: string): Promise<Relationship
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
+      console.log("No relationships found for user");
       return [];
     }
+    
+    console.log(`Found ${querySnapshot.docs.length} user relationship records`);
     
     // Extract relationship IDs
     const relationshipIds = querySnapshot.docs.map(doc => 
@@ -112,13 +119,17 @@ export async function getUserRelationships(userId: string): Promise<Relationship
     const relationships: Relationship[] = [];
     
     for (const relationshipId of relationshipIds) {
+      console.log("Fetching relationship with ID:", relationshipId);
       const relationshipDoc = await getDoc(doc(relationshipsCollection, relationshipId));
       
       if (relationshipDoc.exists()) {
         relationships.push(convertToRelationship(relationshipDoc));
+      } else {
+        console.warn(`Relationship with ID ${relationshipId} not found in Firestore`);
       }
     }
     
+    console.log(`Returning ${relationships.length} relationships`);
     return relationships;
   } catch (error) {
     console.error("Error getting user relationships:", error);
@@ -138,8 +149,11 @@ export async function createRelationship(): Promise<Relationship> {
     
     const docRef = await addDoc(relationshipsCollection, relationshipData);
     
+    // Safe ID conversion with fallback
+    const id = Number(docRef.id);
+    
     return {
-      id: parseInt(docRef.id),
+      id: isNaN(id) ? 0 : id,
       inviteCode,
       createdAt: new Date()
     };
@@ -152,6 +166,15 @@ export async function createRelationship(): Promise<Relationship> {
 // Add user to relationship
 export async function addUserToRelationship(userId: string, relationshipId: number): Promise<Relationship> {
   try {
+    console.log("Adding user", userId, "to relationship", relationshipId);
+    
+    // First verify the relationship exists
+    let relationship = await getRelationshipById(relationshipId);
+    if (!relationship) {
+      console.error("Relationship not found with ID:", relationshipId);
+      throw new Error(`Relationship not found with ID: ${relationshipId}`);
+    }
+    
     // Check if user is already in this relationship
     const q = query(
       userRelationshipsCollection,
@@ -162,12 +185,8 @@ export async function addUserToRelationship(userId: string, relationshipId: numb
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-      // User is already in this relationship
-      // Return the relationship
-      const relationship = await getRelationshipById(relationshipId);
-      if (!relationship) {
-        throw new Error("Relationship not found");
-      }
+      // User is already in this relationship, just return the relationship
+      console.log("User is already in this relationship");
       return relationship;
     }
     
@@ -178,11 +197,9 @@ export async function addUserToRelationship(userId: string, relationshipId: numb
       createdAt: serverTimestamp()
     });
     
-    // Return the relationship
-    const relationship = await getRelationshipById(relationshipId);
-    if (!relationship) {
-      throw new Error("Relationship not found");
-    }
+    console.log("User successfully added to relationship");
+    
+    // Just return the relationship we already verified exists
     return relationship;
   } catch (error) {
     console.error("Error adding user to relationship:", error);
