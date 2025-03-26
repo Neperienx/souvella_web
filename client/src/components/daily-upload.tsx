@@ -83,15 +83,15 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       return;
     }
     
-    // Check if user has already uploaded today
-    if (alreadyUploadedToday) {
-      toast({
-        title: "Already uploaded today",
-        description: "You've already shared a memory today. Come back tomorrow!",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Debug mode: remove daily upload limit for testing
+    // if (alreadyUploadedToday) {
+    //   toast({
+    //     title: "Already uploaded today",
+    //     description: "You've already shared a memory today. Come back tomorrow!",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
     
     // Get user ID from Firebase
     const firebaseUid = auth.currentUser?.uid;
@@ -132,9 +132,8 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
         
         <h2 className="font-serif text-2xl mb-4 text-center">Today's Memory</h2>
         <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
-          {alreadyUploadedToday 
-            ? "You've already shared a memory today. Come back tomorrow!" 
-            : "What's your special moment today?"}
+          {/* Debug mode: always show "What's your special moment today?" */}
+          What's your special moment today?
         </p>
         
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -143,7 +142,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
               {...form.register("content")}
               placeholder="Write your memory here..." 
               className="w-full p-4 rounded-xl border border-gray-200 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-light)] focus:outline-none min-h-[100px] bg-white/90"
-              disabled={alreadyUploadedToday || isPending}
+              disabled={isPending}
             />
             
             {form.formState.errors.content && (
@@ -183,7 +182,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
               <button 
                 type="button" 
                 onClick={handleAddPhoto}
-                disabled={alreadyUploadedToday || isPending}
+                disabled={isPending}
                 className="flex items-center space-x-2 px-4 py-2 bg-[var(--secondary)]/60 rounded-xl hover:bg-[var(--secondary)]/80 transition disabled:opacity-50"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
@@ -195,7 +194,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
               <button 
                 type="button" 
                 onClick={handleAddVoice}
-                disabled={alreadyUploadedToday || isPending}
+                disabled={isPending}
                 className="flex items-center space-x-2 px-4 py-2 bg-[var(--accent)]/60 rounded-xl hover:bg-[var(--accent)]/80 transition disabled:opacity-50"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
@@ -208,7 +207,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
           
           <button 
             type="submit"
-            disabled={alreadyUploadedToday || isPending || isCreatingRelationship}
+            disabled={isPending || isCreatingRelationship}
             className="w-full py-3 bg-[var(--primary)] hover:bg-[var(--primary-dark)] transition rounded-xl shadow-md font-medium text-white disabled:opacity-50"
           >
             {isPending ? "Saving..." : "Save Memory"}
