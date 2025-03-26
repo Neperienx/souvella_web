@@ -63,9 +63,13 @@ export default function HomePage() {
 
   // Show invite modal
   const showInviteModal = () => {
-    // Force a refetch of relationship data before showing the modal
+    console.log("Opening invite modal");
+    // Ensure we have the latest relationship data
     queryClient.invalidateQueries({ queryKey: ["relationships/user", user?.uid] });
-    setIsInviteModalOpen(true);
+    // Short delay to ensure we have the latest data
+    setTimeout(() => {
+      setIsInviteModalOpen(true);
+    }, 300);
   };
 
   if (relationshipLoading) {

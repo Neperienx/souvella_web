@@ -9,7 +9,8 @@ import {
   serverTimestamp, 
   getDoc,
   Timestamp,
-  QueryDocumentSnapshot
+  QueryDocumentSnapshot,
+  setDoc
 } from "firebase/firestore";
 import { firestore } from "./firebase";
 import { Relationship, UserRelationship } from "@shared/schema";
@@ -72,18 +73,30 @@ export async function getRelationshipById(id: number): Promise<Relationship | nu
 // Get relationship by invite code
 export async function getRelationshipByInviteCode(code: string): Promise<Relationship | null> {
   try {
+    console.log("Getting relationship with invite code:", code);
+    
+    if (!code || code.trim() === "") {
+      console.error("Invalid invite code provided");
+      return null;
+    }
+    
     const q = query(
       relationshipsCollection, 
-      where("inviteCode", "==", code)
+      where("inviteCode", "==", code.trim())
     );
     
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
+      console.log("No relationship found with invite code:", code);
       return null;
     }
     
-    return convertToRelationship(querySnapshot.docs[0]);
+    console.log("Found relationship with invite code");
+    const relationship = convertToRelationship(querySnapshot.docs[0]);
+    console.log("Relationship details:", relationship);
+    
+    return relationship;
   } catch (error) {
     console.error("Error getting relationship by invite code:", error);
     throw error;
@@ -110,22 +123,25 @@ export async function getUserRelationships(userId: string): Promise<Relationship
     
     console.log(`Found ${querySnapshot.docs.length} user relationship records`);
     
-    // Extract relationship IDs
-    const relationshipIds = querySnapshot.docs.map(doc => 
-      (doc.data() as FirestoreUserRelationship).relationshipId
-    );
-    
     // Get all relationships
     const relationships: Relationship[] = [];
     
-    for (const relationshipId of relationshipIds) {
-      console.log("Fetching relationship with ID:", relationshipId);
-      const relationshipDoc = await getDoc(doc(relationshipsCollection, relationshipId));
+    for (const docSnapshot of querySnapshot.docs) {
+      const userData = docSnapshot.data() as FirestoreUserRelationship;
+      console.log("User relationship data:", userData);
+      
+      if (!userData.relationshipId) {
+        console.warn("Relationship ID is missing in user relationship document");
+        continue;
+      }
+      
+      console.log("Fetching relationship with ID:", userData.relationshipId);
+      const relationshipDoc = await getDoc(doc(relationshipsCollection, userData.relationshipId));
       
       if (relationshipDoc.exists()) {
         relationships.push(convertToRelationship(relationshipDoc));
       } else {
-        console.warn(`Relationship with ID ${relationshipId} not found in Firestore`);
+        console.warn(`Relationship with ID ${userData.relationshipId} not found in Firestore`);
       }
     }
     
@@ -142,20 +158,23 @@ export async function createRelationship(): Promise<Relationship> {
   try {
     const inviteCode = generateInviteCode();
     
-    const relationshipData = {
+    // Generate a numeric ID instead of relying on Firestore's document ID
+    const now = new Date();
+    const numericId = Math.floor(now.getTime() / 1000); // Unix timestamp in seconds
+    
+    console.log("Creating relationship with generated ID:", numericId);
+    
+    // Add document with custom ID
+    await setDoc(doc(relationshipsCollection, numericId.toString()), {
       inviteCode,
       createdAt: serverTimestamp()
-    };
+    });
     
-    const docRef = await addDoc(relationshipsCollection, relationshipData);
-    
-    // Safe ID conversion with fallback
-    const id = Number(docRef.id);
-    
+    // Return a properly formed relationship object
     return {
-      id: isNaN(id) ? 0 : id,
+      id: numericId,
       inviteCode,
-      createdAt: new Date()
+      createdAt: now
     };
   } catch (error) {
     console.error("Error creating relationship:", error);
