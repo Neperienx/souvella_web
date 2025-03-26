@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth";
 import { useUserRelationship } from "../hooks/use-relationship";
 import { useDailyMemories, useRelationshipMemories } from "../hooks/use-memories";
+import { queryClient } from "@/lib/queryClient";
 
 import Header from "../components/header";
 import DailyUpload from "../components/daily-upload";
@@ -38,6 +39,8 @@ export default function HomePage() {
 
   // Show invite modal
   const showInviteModal = () => {
+    // Force a refetch of relationship data before showing the modal
+    queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", user?.uid] });
     setIsInviteModalOpen(true);
   };
 

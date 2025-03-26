@@ -16,16 +16,18 @@ export default function RelationshipDashboard({ userId, onRelationshipCreated }:
   const { mutate: createRelationship, isPending: isCreating } = useCreateRelationship();
   const { mutate: joinRelationship, isPending: isJoining } = useJoinRelationship();
   
-  const handleCreateRelationship = () => {
-    createRelationship(userId);
-    
-    // Use manual timing to open the invite modal after a short delay
-    // to allow for API response and state update
-    setTimeout(() => {
+  const handleCreateRelationship = async () => {
+    try {
+      // Wait for the relationship to be created
+      const newRelationship = await createRelationship(userId);
+      
+      // Call the callback right away with the invite code now in the queryCache
       if (onRelationshipCreated) {
         onRelationshipCreated();
       }
-    }, 1000);
+    } catch (error) {
+      console.error("Error creating relationship:", error);
+    }
   };
   
   const handleJoinRelationship = (e: React.FormEvent) => {

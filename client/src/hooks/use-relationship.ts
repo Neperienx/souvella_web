@@ -22,12 +22,17 @@ export function useCreateRelationship() {
       return res.json();
     },
     onSuccess: (data, variables) => {
+      // Immediately update the relationship query cache with the new data
+      queryClient.setQueryData(["/api/relationships/user", variables], data);
+      // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", variables] });
       
       toast({
         title: "Relationship Created",
         description: "Your relationship has been created. Share the invite code with your partner!",
       });
+      
+      return data;
     },
     onError: (error) => {
       toast({
@@ -49,12 +54,17 @@ export function useJoinRelationship() {
       return res.json();
     },
     onSuccess: (data, variables) => {
+      // Immediately update the relationship query cache with the new data
+      queryClient.setQueryData(["/api/relationships/user", variables.uid], data);
+      // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", variables.uid] });
       
       toast({
         title: "Joined Relationship",
         description: "You've successfully joined the relationship!",
       });
+      
+      return data;
     },
     onError: (error) => {
       toast({

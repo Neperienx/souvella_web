@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/use-auth";
-import { useCreateRelationship, useJoinRelationship } from "../hooks/use-relationship";
+import { useCreateRelationship, useJoinRelationship, useUserRelationship } from "../hooks/use-relationship";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { queryClient } from "@/lib/queryClient";
 
 interface InvitePartnerModalProps {
   isOpen: boolean;
@@ -17,10 +18,21 @@ const inviteSchema = z.object({
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
-export default function InvitePartnerModal({ isOpen, onClose, inviteCode }: InvitePartnerModalProps) {
+export default function InvitePartnerModal({ isOpen, onClose, inviteCode: propInviteCode }: InvitePartnerModalProps) {
   const [copied, setCopied] = useState(false);
-  const [viewMode, setViewMode] = useState<"share" | "join">(inviteCode ? "share" : "join");
+  const [viewMode, setViewMode] = useState<"share" | "join">(propInviteCode ? "share" : "join");
   const { user } = useAuth();
+  
+  // Get the latest relationship data directly
+  const { data: relationship } = useUserRelationship(user?.uid || null);
+  const inviteCode = relationship?.inviteCode || propInviteCode;
+  
+  // Update viewMode when relationship/inviteCode changes
+  useEffect(() => {
+    if (inviteCode) {
+      setViewMode("share");
+    }
+  }, [inviteCode]);
   
   const { mutate: createRelationship, isPending: isCreating } = useCreateRelationship();
   const { mutate: joinRelationship, isPending: isJoining } = useJoinRelationship();
@@ -40,18 +52,30 @@ export default function InvitePartnerModal({ isOpen, onClose, inviteCode }: Invi
     }
   };
 
-  const handleCreateRelationship = () => {
+  const handleCreateRelationship = async () => {
     if (user) {
-      createRelationship(user.uid);
+      try {
+        const result = await createRelationship(user.uid);
+        // Force a refetch after creation to ensure we have the latest data
+        queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", user.uid] });
+      } catch (error) {
+        console.error("Error creating relationship:", error);
+      }
     }
   };
 
-  const onSubmit = (data: InviteFormValues) => {
+  const onSubmit = async (data: InviteFormValues) => {
     if (user) {
-      joinRelationship({
-        uid: user.uid,
-        inviteCode: data.inviteCode,
-      });
+      try {
+        await joinRelationship({
+          uid: user.uid,
+          inviteCode: data.inviteCode,
+        });
+        // Force a refetch after joining to ensure we have the latest data
+        queryClient.invalidateQueries({ queryKey: ["/api/relationships/user", user.uid] });
+      } catch (error) {
+        console.error("Error joining relationship:", error);
+      }
     }
   };
 
