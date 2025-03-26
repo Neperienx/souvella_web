@@ -10,7 +10,8 @@ import {
   createMemory as createFirestoreMemory, 
   reactToMemory as reactToFirestoreMemory,
   markMemoriesAsViewed,
-  getUserRemainingThumbsUp
+  getUserRemainingThumbsUp,
+  regenerateDailyMemories
 } from "@/lib/firebase-service";
 
 // Hook to fetch all memories for a relationship
@@ -150,6 +151,41 @@ export function useReactToMemory() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to add thumbs up",
+        variant: "destructive",
+      });
+    }
+  });
+}
+
+// Hook to reroll daily memories
+export function useRerollDailyMemories() {
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      relationshipId, 
+      count = 3 
+    }: { 
+      relationshipId: number; 
+      count?: number;
+    }) => {
+      // Use Firestore to regenerate daily memories
+      return regenerateDailyMemories(relationshipId, count);
+    },
+    onSuccess: (result, variables) => {
+      // Show toast with the result message
+      toast({
+        title: "Memories Rerolled",
+        description: `New selection of ${result.length} memories has been generated!`,
+      });
+      
+      // Invalidate daily memories query
+      queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to reroll memories",
         variant: "destructive",
       });
     }
