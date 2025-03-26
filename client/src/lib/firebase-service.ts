@@ -68,14 +68,28 @@ interface UserReaction {
 // Convert Firestore document to Memory type
 function convertToMemory(doc: QueryDocumentSnapshot): Memory {
   const data = doc.data() as FirestoreMemory;
+  
+  // Safe parsing of relationshipId from string to number
+  let relationshipId: number;
+  try {
+    relationshipId = parseInt(data.relationshipId, 10);
+    if (isNaN(relationshipId)) {
+      console.warn(`Invalid relationshipId in Firestore document ${doc.id}: ${data.relationshipId}`);
+      relationshipId = 0; // Default fallback value
+    }
+  } catch (e) {
+    console.error(`Error parsing relationshipId in Firestore document ${doc.id}:`, e);
+    relationshipId = 0; // Default fallback value
+  }
+  
   return {
     id: doc.id, // Keep ID as string to match Firebase document ID
     userId: data.userId, // Keep as string to match Firebase user ID
-    relationshipId: data.relationshipId,
+    relationshipId, // Now safely parsed to number
     type: data.type as MemoryType,
     content: data.content,
-    createdAt: data.createdAt.toDate(),
-    thumbsUpCount: data.thumbsUpCount,
+    createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
+    thumbsUpCount: data.thumbsUpCount || 0,
     caption: data.caption || null,
     imageUrl: data.imageUrl || null,
     isNew: data.isNew || false
@@ -85,10 +99,13 @@ function convertToMemory(doc: QueryDocumentSnapshot): Memory {
 // Get memories for a relationship
 export async function getRelationshipMemories(relationshipId: number): Promise<Memory[]> {
   try {
+    // Convert relationshipId to string for Firestore consistency
+    const relationshipIdString = relationshipId.toString();
+    
     // Using only a single filter to avoid index requirements
     const q = query(
       memoriesCollection,
-      where("relationshipId", "==", relationshipId)
+      where("relationshipId", "==", relationshipIdString)
     );
 
     const querySnapshot = await getDocs(q);
@@ -199,7 +216,7 @@ export async function regenerateDailyMemories(relationshipId: number, count: num
     // First, get all available memories for this relationship
     const q1 = query(
       memoriesCollection,
-      where("relationshipId", "==", relationshipId)
+      where("relationshipId", "==", relationshipIdString)
     );
     
     const memoriesSnapshot = await getDocs(q1);
