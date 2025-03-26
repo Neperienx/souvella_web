@@ -5,9 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface RelationshipDashboardProps {
   userId: string;
+  onRelationshipCreated?: () => void;
 }
 
-export default function RelationshipDashboard({ userId }: RelationshipDashboardProps) {
+export default function RelationshipDashboard({ userId, onRelationshipCreated }: RelationshipDashboardProps) {
   const [inviteCode, setInviteCode] = useState("");
   const [showJoinForm, setShowJoinForm] = useState(false);
   const { toast } = useToast();
@@ -17,6 +18,14 @@ export default function RelationshipDashboard({ userId }: RelationshipDashboardP
   
   const handleCreateRelationship = () => {
     createRelationship(userId);
+    
+    // Use manual timing to open the invite modal after a short delay
+    // to allow for API response and state update
+    setTimeout(() => {
+      if (onRelationshipCreated) {
+        onRelationshipCreated();
+      }
+    }, 1000);
   };
   
   const handleJoinRelationship = (e: React.FormEvent) => {

@@ -112,7 +112,7 @@ export default function HomePage() {
         onTimelineClick={handleTimelineClick} 
       />
       
-      {isInviteModalOpen && relationship && (
+      {isInviteModalOpen && (
         <InvitePartnerModal 
           isOpen={isInviteModalOpen} 
           onClose={() => setIsInviteModalOpen(false)} 
