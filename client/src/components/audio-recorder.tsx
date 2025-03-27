@@ -3,6 +3,12 @@ import AudioRecorderPolyfill from 'audio-recorder-polyfill';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mic, Square, Play, Pause } from 'lucide-react';
 
+// Type definition for BlobEvent if not available in TypeScript
+interface BlobEvent extends Event {
+  data: Blob;
+  timecode?: number;
+}
+
 type AudioRecorderProps = {
   onAudioCaptured: (audioBlob: File) => void;
   onCancel: () => void;
@@ -57,24 +63,56 @@ export default function AudioRecorder({ onAudioCaptured, onCancel }: AudioRecord
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      // Create media recorder instance
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm', // More compatible format
-      });
-      mediaRecorderRef.current = mediaRecorder;
+      // Create media recorder instance with optimized settings
+      // Try to use the most efficient codecs first
+      let mimeType = 'audio/webm;codecs=opus'; // Best compression, good quality
+      let options = {
+        mimeType,
+        audioBitsPerSecond: 128000 // 128kbps - good balance between quality and file size
+      };
+      
+      // Check if the browser supports our preferred format
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        // Fall back to standard WebM without specifying codec
+        mimeType = 'audio/webm';
+        options = {
+          mimeType,
+          audioBitsPerSecond: 128000
+        };
+        
+        console.log("AUDIO: Primary codec not supported, falling back to:", mimeType);
+      }
+      
+      try {
+        const mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorderRef.current = mediaRecorder;
+        console.log("AUDIO: Recording with format:", mimeType, "at 128kbps");
+      } catch (err) {
+        console.error("AUDIO: Error creating MediaRecorder with specified options:", err);
+        // Last resort - use default options
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        console.log("AUDIO: Fallback to default MediaRecorder settings");
+      }
       
       // Clear previous recording data
       audioChunksRef.current = [];
       setRecordingDuration(0);
       
+      // Get the MediaRecorder instance from the ref
+      const recorder = mediaRecorderRef.current;
+      if (!recorder) {
+        throw new Error("MediaRecorder not initialized properly");
+      }
+      
       // Setup recording handlers
-      mediaRecorder.ondataavailable = (event) => {
+      recorder.ondataavailable = (event: BlobEvent) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
       
-      mediaRecorder.onstop = () => {
+      recorder.onstop = () => {
         // Create blob from recorded chunks
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
@@ -97,7 +135,7 @@ export default function AudioRecorder({ onAudioCaptured, onCancel }: AudioRecord
       };
       
       // Start the recording
-      mediaRecorder.start();
+      recorder.start();
       setRecording(true);
       
       // Start duration timer
@@ -142,13 +180,28 @@ export default function AudioRecorder({ onAudioCaptured, onCancel }: AudioRecord
   // Save the recording
   const saveRecording = () => {
     if (audioBlob) {
-      // Create a File from the Blob with proper metadata
+      // Get current date for filename
+      const now = new Date();
+      const dateStr = now.toISOString().replace(/:/g, '-').replace(/\..+/, '');
+      
+      // Get the size in KB for the filename
+      const sizeKB = Math.round(audioBlob.size / 1024);
+      
+      // Get the mime type from the blob
+      const mimeType = audioBlob.type || 'audio/webm';
+      
+      // Extract codec info if present
+      const codecMatch = mimeType.match(/;codecs=([^;]+)/);
+      const codecInfo = codecMatch ? `-${codecMatch[1]}` : '';
+      
+      // Create a File from the Blob with proper metadata including size and format info
       const audioFile = new File(
         [audioBlob], 
-        `voice-memo-${new Date().toISOString()}.webm`, 
-        { type: 'audio/webm' }
+        `voice-memo-${dateStr}${codecInfo}-${sizeKB}kb.webm`, 
+        { type: mimeType }
       );
       
+      console.log("AUDIO: Saving recording:", audioFile.name, `(${sizeKB}KB)`);
       onAudioCaptured(audioFile);
     }
   };

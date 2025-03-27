@@ -54,6 +54,7 @@ export default function MemoryCard({ memory, tapePosition, relationshipId }: Mem
             <AudioPlayer 
               audioUrl={memory.imageUrl} 
               caption={memory.caption || memory.content}
+              showFileInfo={true} // Enable file information for audio memories
             />
           </div>
         ) : (

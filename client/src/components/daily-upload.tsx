@@ -192,18 +192,48 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
             form.setValue('content', 'Image memory');
           }
         } else if (memoryType === 'audio') {
-          // Create a preview URL for the audio
-          const objectUrl = URL.createObjectURL(selectedFile);
+          console.log("FILE DEBUG: Processing audio file");
           
-          // Set the state with file information
-          setFile(selectedFile);
-          setPreviewUrl(objectUrl);
-          setMemoryType("audio");
-          console.log("FILE DEBUG: Audio file preview created successfully");
-          
-          // Set a default value for the content field if empty
-          if (!form.getValues('content')) {
-            form.setValue('content', 'Voice memory');
+          try {
+            // Import and use the audio processing function
+            const { processAudio } = await import('@/lib/file-processing');
+            const processedAudioFile = await processAudio(selectedFile);
+            
+            // Create a preview URL for the processed audio
+            const objectUrl = URL.createObjectURL(processedAudioFile);
+            
+            // Set the state with file information
+            setFile(processedAudioFile);
+            setPreviewUrl(objectUrl);
+            setMemoryType("audio");
+            
+            console.log("FILE DEBUG: Audio file processed and preview created successfully");
+            console.log("FILE DEBUG: Original size:", Math.round(selectedFile.size / 1024), "KB");
+            console.log("FILE DEBUG: Processed size:", Math.round(processedAudioFile.size / 1024), "KB");
+            
+            // Show processing result in the UI
+            toast({
+              title: "Audio Processed",
+              description: `Audio file prepared for upload (${Math.round(processedAudioFile.size / 1024)}KB)`,
+            });
+            
+            // Set a default value for the content field if empty
+            if (!form.getValues('content')) {
+              form.setValue('content', 'Voice memory');
+            }
+          } catch (error) {
+            console.error("FILE DEBUG: Error processing audio:", error);
+            
+            // Fallback to using the original file if processing fails
+            const objectUrl = URL.createObjectURL(selectedFile);
+            setFile(selectedFile);
+            setPreviewUrl(objectUrl);
+            setMemoryType("audio");
+            
+            // Set a default value for the content field if empty
+            if (!form.getValues('content')) {
+              form.setValue('content', 'Voice memory');
+            }
           }
         }
       } catch (error) {

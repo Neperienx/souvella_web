@@ -6,9 +6,10 @@ import { Slider } from '@/components/ui/slider';
 interface AudioPlayerProps {
   audioUrl: string;
   caption?: string;
+  showFileInfo?: boolean; // Option to display technical file information
 }
 
-export default function AudioPlayer({ audioUrl, caption }: AudioPlayerProps) {
+export default function AudioPlayer({ audioUrl, caption, showFileInfo = false }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -16,6 +17,11 @@ export default function AudioPlayer({ audioUrl, caption }: AudioPlayerProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [audioMetadata, setAudioMetadata] = useState<{
+    format: string;
+    fileSize: string;
+    bitrate?: string;
+  } | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
@@ -27,6 +33,11 @@ export default function AudioPlayer({ audioUrl, caption }: AudioPlayerProps) {
     const handleCanPlay = () => {
       setIsLoading(false);
       setDuration(audio.duration);
+      
+      // If showing file info, try to fetch the metadata
+      if (showFileInfo) {
+        fetchAudioMetadata();
+      }
     };
     
     const handleTimeUpdate = () => {
@@ -54,6 +65,53 @@ export default function AudioPlayer({ audioUrl, caption }: AudioPlayerProps) {
     // Set initial volume
     audio.volume = volume;
     
+    // Attempt to fetch audio metadata
+    const fetchAudioMetadata = async () => {
+      if (!showFileInfo) return;
+      
+      try {
+        // Create a HEAD request to get file size without downloading the whole file
+        const response = await fetch(audioUrl, { method: 'HEAD' });
+        if (!response.ok) throw new Error('Failed to fetch file metadata');
+        
+        // Get file size from Content-Length header
+        const contentLength = response.headers.get('Content-Length');
+        const contentType = response.headers.get('Content-Type') || 'audio/unknown';
+        
+        // Calculate file size in KB
+        const fileSizeBytes = parseInt(contentLength || '0', 10);
+        const fileSizeKB = Math.round(fileSizeBytes / 1024);
+        
+        // Extract format from URL or Content-Type
+        let format = contentType.split('/')[1] || 'unknown';
+        
+        // Look for codec info in the URL
+        const codecMatch = audioUrl.match(/codecs=([^&]+)/);
+        const codecInfo = codecMatch ? codecMatch[1] : null;
+        
+        // Estimate bitrate based on duration and file size
+        let bitrate = null;
+        if (duration && fileSizeBytes) {
+          // bitrate = fileSize (bits) / duration (seconds)
+          bitrate = Math.round((fileSizeBytes * 8) / duration / 1000); // in kbps
+        }
+        
+        setAudioMetadata({
+          format: codecInfo ? `${format} (${codecInfo})` : format,
+          fileSize: `${fileSizeKB} KB`,
+          bitrate: bitrate ? `${bitrate} kbps` : undefined
+        });
+        
+        console.log("AUDIO PLAYER: Retrieved metadata:", {
+          format,
+          fileSize: `${fileSizeKB} KB`,
+          bitrate: bitrate ? `${bitrate} kbps` : 'unknown'
+        });
+      } catch (error) {
+        console.error("AUDIO PLAYER: Error fetching metadata:", error);
+      }
+    };
+    
     // Clean up
     return () => {
       audio.pause();
@@ -63,7 +121,7 @@ export default function AudioPlayer({ audioUrl, caption }: AudioPlayerProps) {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [audioUrl]);
+  }, [audioUrl, showFileInfo]);
   
   // Play/pause toggle
   const togglePlayPause = () => {
@@ -195,6 +253,32 @@ export default function AudioPlayer({ audioUrl, caption }: AudioPlayerProps) {
           />
         </div>
       </div>
+      
+      {/* Audio File Information */}
+      {showFileInfo && audioMetadata && (
+        <div className="mt-2 text-xs text-gray-500 border-t border-gray-200 pt-2">
+          <div className="grid grid-cols-3 gap-2">
+            {audioMetadata.format && (
+              <div>
+                <span className="font-medium">Format:</span> {audioMetadata.format}
+              </div>
+            )}
+            {audioMetadata.fileSize && (
+              <div>
+                <span className="font-medium">Size:</span> {audioMetadata.fileSize}
+              </div>
+            )}
+            {audioMetadata.bitrate && (
+              <div>
+                <span className="font-medium">Bitrate:</span> {audioMetadata.bitrate}
+              </div>
+            )}
+            <div>
+              <span className="font-medium">Duration:</span> {formatTime(duration)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

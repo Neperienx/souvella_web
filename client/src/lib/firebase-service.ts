@@ -536,10 +536,10 @@ export async function createMemory(data: {
     // Default the type to what was passed in
     let finalMemoryType = data.type;
     
-    // If there's a file, upload it to Firebase Storage
-    if (data.file && data.type === "image") {
+    // If there's a file, upload it to Firebase Storage (both images and audio)
+    if (data.file && (data.type === "image" || data.type === "audio")) {
       try {
-        console.log("UPLOAD DEBUG: Starting image upload process", {
+        console.log(`UPLOAD DEBUG: Starting ${data.type} upload process`, {
           fileName: data.file.name,
           fileType: data.file.type,
           fileSize: `${Math.round(data.file.size / 1024)} KB`,
@@ -638,6 +638,7 @@ export async function createMemory(data: {
     }
     
     // Only add imageUrl if it exists and is not empty
+    // This field is used for both image URLs and audio file URLs
     if (imageUrl && imageUrl.trim() !== '') {
       memoryData.imageUrl = imageUrl;
     }
@@ -688,9 +689,9 @@ export async function createMemory(data: {
       userId: data.userId, // Keep as string to match Firebase user ID
       relationshipId: data.relationshipId,
       type: finalMemoryType as MemoryType, // Use the possibly updated type
-      content: finalMemoryType === "image" && imageUrl ? imageUrl : data.content,
+      content: (finalMemoryType === "image" || finalMemoryType === "audio") ? data.content : data.content,
       caption: data.caption || null,
-      imageUrl: imageUrl || null,
+      imageUrl: imageUrl || null, // For both image URLs and audio file URLs
       createdAt: new Date(),
       thumbsUpCount: 0,
       isNew: true
