@@ -9,6 +9,7 @@ import { Memory, checkFirebaseStorage } from "@/lib/firebase-service";
 import { hasUploadedToday } from "../lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
+import AudioRecorder from "./audio-recorder";
 
 // Form schema with optional caption field
 const memorySchema = z.object({
@@ -48,12 +49,47 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     fileInputRef.current?.click();
   };
 
+  const [showRecorder, setShowRecorder] = useState(false);
+  
   const handleAddVoice = () => {
+    if (file && memoryType === "audio") {
+      // If we already have an audio file, clear it
+      setFile(null);
+      setPreviewUrl(null);
+      setMemoryType("text");
+      return;
+    }
+    
+    const supportsRecording = 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices;
+    
+    if (supportsRecording) {
+      // Show the audio recorder
+      setShowRecorder(true);
+    } else {
+      // Fallback to file upload for browsers that don't support recording
+      setMemoryType("audio");
+      fileInputRef.current?.click();
+      toast({
+        title: "Audio Upload",
+        description: "Select an audio file to upload.",
+      });
+    }
+  };
+  
+  const handleAudioCaptured = (audioFile: File) => {
+    setFile(audioFile);
+    setPreviewUrl(URL.createObjectURL(audioFile));
     setMemoryType("audio");
-    // Logic for voice recording would go here
+    setShowRecorder(false);
+    
+    // Set a default value for the content field if empty
+    if (!form.getValues('content')) {
+      form.setValue('content', 'Voice memory');
+    }
+    
     toast({
-      title: "Coming Soon",
-      description: "Voice recording will be available in a future update!",
+      title: "Voice Recorded",
+      description: `Captured ${Math.round(audioFile.size / 1024)}KB audio file`,
     });
   };
   
@@ -103,7 +139,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
@@ -113,37 +149,68 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
         size: `${Math.round(selectedFile.size / 1024)} KB`
       });
       
-      // Validate file type
-      if (!selectedFile.type.startsWith('image/')) {
-        console.error("FILE DEBUG: Invalid file type:", selectedFile.type);
+      // Import the file processing utilities
+      const { compressImage, getMemoryTypeFromFile } = await import('@/lib/file-processing');
+      
+      // Determine the memory type from the file
+      const memoryType = getMemoryTypeFromFile(selectedFile);
+      
+      if (!memoryType) {
+        console.error("FILE DEBUG: Unsupported file type:", selectedFile.type);
         toast({
-          title: "Invalid file",
-          description: "Please select an image file (JPEG, PNG, etc.)",
+          title: "Unsupported file type",
+          description: "Please select an image or audio file.",
           variant: "destructive"
         });
         return;
       }
       
       try {
-        console.log("FILE DEBUG: Creating preview URL");
-        // Create a preview URL for the image
-        const objectUrl = URL.createObjectURL(selectedFile);
+        console.log(`FILE DEBUG: Processing ${memoryType} file`);
         
-        // Set the state with file information
-        setFile(selectedFile);
-        setPreviewUrl(objectUrl);
-        setMemoryType("image");
-        console.log("FILE DEBUG: Preview URL created successfully");
-        
-        // Set a default value for the content field if empty
-        if (!form.getValues('content')) {
-          form.setValue('content', 'Image memory');
+        if (memoryType === 'image') {
+          // Compress the image before uploading
+          const compressedFile = await compressImage(selectedFile);
+          
+          // Create a preview URL for the compressed image
+          const objectUrl = URL.createObjectURL(compressedFile);
+          
+          // Set the state with file information
+          setFile(compressedFile);
+          setPreviewUrl(objectUrl);
+          setMemoryType("image");
+          console.log("FILE DEBUG: Image compressed and preview created successfully");
+          
+          // Show compression result in the UI
+          toast({
+            title: "Image Optimized",
+            description: `Reduced from ${Math.round(selectedFile.size / 1024)}KB to ${Math.round(compressedFile.size / 1024)}KB`,
+          });
+          
+          // Set a default value for the content field if empty
+          if (!form.getValues('content')) {
+            form.setValue('content', 'Image memory');
+          }
+        } else if (memoryType === 'audio') {
+          // Create a preview URL for the audio
+          const objectUrl = URL.createObjectURL(selectedFile);
+          
+          // Set the state with file information
+          setFile(selectedFile);
+          setPreviewUrl(objectUrl);
+          setMemoryType("audio");
+          console.log("FILE DEBUG: Audio file preview created successfully");
+          
+          // Set a default value for the content field if empty
+          if (!form.getValues('content')) {
+            form.setValue('content', 'Voice memory');
+          }
         }
       } catch (error) {
-        console.error("FILE DEBUG: Error creating preview:", error);
+        console.error("FILE DEBUG: Error processing file:", error);
         toast({
-          title: "Error processing image",
-          description: "There was a problem with this image. Please try another one.",
+          title: "Error processing file",
+          description: "There was a problem with this file. Please try another one.",
           variant: "destructive"
         });
       }
@@ -192,8 +259,8 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     
     console.log("SUBMIT DEBUG: User authenticated with ID:", firebaseUid);
     
-    // Determine the correct memory type based on whether a file is selected
-    const actualMemoryType = (memoryType === "image" && file) ? "image" : "text";
+    // Determine the correct memory type based on the current memory type and whether a file is selected
+    const actualMemoryType = file ? memoryType : "text";
     console.log(`SUBMIT DEBUG: Memory type set to ${actualMemoryType} (selected type was ${memoryType}, file present: ${!!file})`);
     
     // Prepare memory data with correct file handling
@@ -202,8 +269,8 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       relationshipId,
       type: actualMemoryType,
       content: data.content,
-      caption: actualMemoryType === "image" ? data.caption : undefined,
-      file: actualMemoryType === "image" && file ? file : undefined
+      caption: (actualMemoryType === "image" || actualMemoryType === "audio") ? data.caption : undefined,
+      file: file ? file : undefined
     };
     
     console.log("SUBMIT DEBUG: Prepared memory data:", {
@@ -234,11 +301,22 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
         <div className="paper-clip"></div>
         <div className="tape w-32 -left-6 top-10 rotate-12"></div>
         
-        <h2 className="font-serif text-2xl mb-4 text-center">Today's Memory</h2>
-        <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
-          {/* Debug mode: always show "What's your special moment today?" */}
-          What's your special moment today?
-        </p>
+        {showRecorder ? (
+          <div className="mb-6">
+            <AudioRecorder 
+              onAudioCaptured={handleAudioCaptured}
+              onCancel={() => setShowRecorder(false)}
+            />
+          </div>
+        ) : (
+          <>
+            <h2 className="font-serif text-2xl mb-4 text-center">Today's Memory</h2>
+            <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
+              {/* Debug mode: always show "What's your special moment today?" */}
+              What's your special moment today?
+            </p>
+          </>
+        )}
         
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="flex flex-col space-y-3">
@@ -274,9 +352,37 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
               </div>
             )}
             
+            {file && memoryType === "audio" && (
+              <div className="mt-3 space-y-3">
+                {previewUrl && (
+                  <div className="bg-white/80 rounded-lg p-3 border border-gray-200">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="bg-[var(--accent)]/30 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm text-[var(--charcoal)]/70">Audio Preview</p>
+                        <p className="font-medium">{file.name}</p>
+                      </div>
+                    </div>
+                    <audio controls className="w-full mt-2" src={previewUrl}></audio>
+                  </div>
+                )}
+                <input
+                  {...form.register("caption")}
+                  placeholder="Add a description for your voice memo..."
+                  className="w-full p-3 rounded-xl border border-gray-200 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-light)] focus:outline-none bg-white/90"
+                  disabled={isPending}
+                />
+                <p className="text-sm text-gray-500 mt-1">Add context to your audio recording</p>
+              </div>
+            )}
+            
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,audio/*"
               ref={fileInputRef}
               onChange={handleFileChange}
               className="hidden"

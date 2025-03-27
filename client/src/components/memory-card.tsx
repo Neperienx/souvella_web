@@ -3,6 +3,7 @@ import { formatDate, getTapePosition } from "../lib/utils";
 import { Memory } from "@/lib/firebase-service";
 import { useReactToMemory, useRemainingThumbsUp } from "../hooks/use-memories";
 import { useAuth } from "../hooks/use-auth";
+import AudioPlayer from "./audio-player";
 
 interface MemoryCardProps {
   memory: Memory;
@@ -48,7 +49,14 @@ export default function MemoryCard({ memory, tapePosition, relationshipId }: Mem
         );
       
       case 'audio':
-        return (
+        return memory.imageUrl ? (
+          <div className="mb-4">
+            <AudioPlayer 
+              audioUrl={memory.imageUrl} 
+              caption={memory.caption || memory.content}
+            />
+          </div>
+        ) : (
           <div className="flex items-center space-x-3 mb-4">
             <div className="bg-[var(--accent)]/30 p-2 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
@@ -58,26 +66,7 @@ export default function MemoryCard({ memory, tapePosition, relationshipId }: Mem
             <div>
               <p className="text-sm text-[var(--charcoal)]/70">Voice Memory</p>
               <p className="font-medium">{memory.content}</p>
-              <div className="mt-1 h-8 flex items-center space-x-2">
-                <button 
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-8 h-8 bg-[var(--primary)] rounded-full flex items-center justify-center text-white"
-                >
-                  {isPlaying ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                    </svg>
-                  )}
-                </button>
-                <div className="w-full bg-gray-200 h-1.5 rounded-full">
-                  <div className="bg-[var(--primary)] h-1.5 rounded-full w-1/3"></div>
-                </div>
-                <span className="text-xs text-gray-500">1:26</span>
-              </div>
+              <p className="text-xs text-red-500">Audio file unavailable</p>
             </div>
           </div>
         );
