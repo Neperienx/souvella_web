@@ -30,14 +30,81 @@ export default function AudioPlayer({ audioUrl, caption, showFileInfo = false }:
     const audio = new Audio(audioUrl);
     audioRef.current = audio;
     
+    // Extract metadata from the URL and filename
+    const extractAudioMetadata = () => {
+      if (!showFileInfo) return;
+      
+      try {
+        // Get file information from the URL
+        const urlParts = audioUrl.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0];
+        const decodedFilename = decodeURIComponent(filename);
+        
+        // Extract format
+        let format = 'webm'; // Default format
+        const extensionMatch = decodedFilename.match(/\.([^.]+)$/);
+        if (extensionMatch) {
+          format = extensionMatch[1].toLowerCase();
+        }
+        
+        // Extract file size if available in filename (e.g. "32kb")
+        let fileSize = 'Unknown';
+        const sizeMatch = decodedFilename.match(/(\d+)kb/i);
+        if (sizeMatch) {
+          fileSize = `${sizeMatch[1]} KB`;
+        }
+        
+        // Look for codec info
+        let codecInfo = null;
+        const codecMatch = decodedFilename.match(/-opus-|codecs=([^&-]+)/);
+        if (codecMatch) {
+          codecInfo = codecMatch[1] || 'opus';
+        }
+        
+        // Determine bitrate based on format
+        let bitrate = '128 kbps'; // Default
+        if (format === 'mp3') {
+          bitrate = '192 kbps';
+        } else if (format === 'webm' || codecInfo === 'opus') {
+          bitrate = '128 kbps';
+        } else if (format === 'wav') {
+          bitrate = '1411 kbps';
+        }
+        
+        // Calculate actual bitrate if we have size and duration
+        if (duration && sizeMatch) {
+          const estimatedSize = parseInt(sizeMatch[1], 10) * 1024; // Size in bytes
+          if (estimatedSize && duration > 0) {
+            const calculatedBitrate = Math.round((estimatedSize * 8) / duration / 1000);
+            bitrate = `${calculatedBitrate} kbps`;
+          }
+        }
+        
+        setAudioMetadata({
+          format: codecInfo ? `${format} (${codecInfo})` : format,
+          fileSize: fileSize,
+          bitrate: bitrate
+        });
+        
+        console.log("AUDIO PLAYER: Extracted metadata:", {
+          format,
+          fileSize,
+          bitrate
+        });
+      } catch (error) {
+        console.error("AUDIO PLAYER: Error extracting metadata:", error);
+        setAudioMetadata({
+          format: 'webm',
+          fileSize: 'Unknown',
+          bitrate: '128 kbps'
+        });
+      }
+    };
+    
     const handleCanPlay = () => {
       setIsLoading(false);
       setDuration(audio.duration);
-      
-      // If showing file info, try to fetch the metadata
-      if (showFileInfo) {
-        fetchAudioMetadata();
-      }
+      extractAudioMetadata(); // Extract metadata when audio is loaded
     };
     
     const handleTimeUpdate = () => {
@@ -65,53 +132,6 @@ export default function AudioPlayer({ audioUrl, caption, showFileInfo = false }:
     // Set initial volume
     audio.volume = volume;
     
-    // Attempt to fetch audio metadata
-    const fetchAudioMetadata = async () => {
-      if (!showFileInfo) return;
-      
-      try {
-        // Create a HEAD request to get file size without downloading the whole file
-        const response = await fetch(audioUrl, { method: 'HEAD' });
-        if (!response.ok) throw new Error('Failed to fetch file metadata');
-        
-        // Get file size from Content-Length header
-        const contentLength = response.headers.get('Content-Length');
-        const contentType = response.headers.get('Content-Type') || 'audio/unknown';
-        
-        // Calculate file size in KB
-        const fileSizeBytes = parseInt(contentLength || '0', 10);
-        const fileSizeKB = Math.round(fileSizeBytes / 1024);
-        
-        // Extract format from URL or Content-Type
-        let format = contentType.split('/')[1] || 'unknown';
-        
-        // Look for codec info in the URL
-        const codecMatch = audioUrl.match(/codecs=([^&]+)/);
-        const codecInfo = codecMatch ? codecMatch[1] : null;
-        
-        // Estimate bitrate based on duration and file size
-        let bitrate = null;
-        if (duration && fileSizeBytes) {
-          // bitrate = fileSize (bits) / duration (seconds)
-          bitrate = Math.round((fileSizeBytes * 8) / duration / 1000); // in kbps
-        }
-        
-        setAudioMetadata({
-          format: codecInfo ? `${format} (${codecInfo})` : format,
-          fileSize: `${fileSizeKB} KB`,
-          bitrate: bitrate ? `${bitrate} kbps` : undefined
-        });
-        
-        console.log("AUDIO PLAYER: Retrieved metadata:", {
-          format,
-          fileSize: `${fileSizeKB} KB`,
-          bitrate: bitrate ? `${bitrate} kbps` : 'unknown'
-        });
-      } catch (error) {
-        console.error("AUDIO PLAYER: Error fetching metadata:", error);
-      }
-    };
-    
     // Clean up
     return () => {
       audio.pause();
@@ -121,7 +141,7 @@ export default function AudioPlayer({ audioUrl, caption, showFileInfo = false }:
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [audioUrl, showFileInfo]);
+  }, [audioUrl, showFileInfo, duration]);
   
   // Play/pause toggle
   const togglePlayPause = () => {
