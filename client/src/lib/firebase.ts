@@ -15,8 +15,8 @@ const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
-  messagingSenderId: "", // Can be blank for our purposes
+  storageBucket: "memorybook2-4df48.appspot.com", // Using exact value from your config
+  messagingSenderId: "664136376571", // Added from your config
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
@@ -24,13 +24,13 @@ const firebaseConfig = {
 console.log("Firebase config (without sensitive data):", {
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  storageBucket: "memorybook2-4df48.appspot.com",
   hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
   hasAppId: !!import.meta.env.VITE_FIREBASE_APP_ID
 });
 
 // Explicitly log the full storage bucket for debugging
-console.log(`Storage bucket configured as: ${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`);
+console.log(`Storage bucket configured as: memorybook2-4df48.appspot.com`);
 
 // Initialize Firebase (only once)
 let app;

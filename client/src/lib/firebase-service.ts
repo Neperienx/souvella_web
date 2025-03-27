@@ -561,7 +561,8 @@ export async function createMemory(data: {
         console.log(`UPLOAD DEBUG: Firebase config:`, {
           storageBucket: import.meta.env.VITE_FIREBASE_PROJECT_ID 
             ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` 
-            : "Not configured"
+            : "Not configured",
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "Not set"
         });
         
         // Check if the Firebase Storage is properly configured
