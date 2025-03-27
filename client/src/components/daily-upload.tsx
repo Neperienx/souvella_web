@@ -63,7 +63,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     
     toast({
       title: "Testing Storage",
-      description: "Testing Firebase Storage connection...",
+      description: "Testing Firebase Storage connection in EUROPE-WEST3 region...",
     });
     
     try {
@@ -72,33 +72,33 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
       
       if (result) {
         toast({
-          title: "Storage Test Passed",
-          description: "Firebase Storage is working properly. You can upload images!",
+          title: "EU Storage Test Passed",
+          description: "Firebase Storage (EUROPE-WEST3) is working properly. You can upload images!",
         });
       } else {
         toast({
-          title: "Storage Test Failed",
-          description: "There was a problem connecting to Firebase Storage. Check console for details.",
+          title: "EU Storage Test Failed",
+          description: "There was a problem connecting to Firebase Storage in EUROPE-WEST3 region. Check console for details.",
           variant: "destructive"
         });
         
         toast({
-          title: "Storage Setup Reminder",
-          description: "Make sure Firebase Storage Rules in your Firebase console allow read/write access. Default rules may be too restrictive.",
+          title: "EU Storage Setup Reminder",
+          description: "Make sure Firebase Storage Rules in the EUROPE-WEST3 region allow read/write access. Default rules may be too restrictive for your EU storage bucket.",
         });
       }
     } catch (error) {
       console.error("STORAGE TEST: Error testing Firebase Storage:", error);
       toast({
-        title: "Storage Test Error",
-        description: "An error occurred while testing Firebase Storage. Check console for details.",
+        title: "EU Storage Test Error",
+        description: "An error occurred while testing Firebase Storage in EUROPE-WEST3 region. Check console for details.",
         variant: "destructive"
       });
       
       // Suggest checking Firebase Storage rules
       toast({
-        title: "Firebase Storage Rules",
-        description: "Check your Firebase Storage rules in the Firebase console. You may need to update them to: rules_version = '2'; service firebase.storage { match /b/{bucket}/o { match /{allPaths=**} { allow read, write: if request.auth != null; } } }",
+        title: "EU Firebase Storage Rules",
+        description: "Check your Firebase Storage rules in the Firebase console for EUROPE-WEST3 region. You need: rules_version = '2'; service firebase.storage { match /b/{bucket}/o { match /{allPaths=**} { allow read, write: if request.auth != null; } } }",
       });
     }
   };
@@ -316,7 +316,7 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
-                <span>Test Storage</span>
+                <span>Test EU Storage</span>
               </button>
             </div>
           </div>

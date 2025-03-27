@@ -11,12 +11,15 @@ import {
 import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
 
+// Firebase configuration with EUROPE-WEST3 regional settings
+// Important: Firebase Storage in EU region uses .firebasestorage.app domain
+// rather than .appspot.com that might be used in US regions
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: "memorybook2-4df48.appspot.com", // Using exact value from your config
-  messagingSenderId: "664136376571", // Added from your config
+  storageBucket: "memorybook2-4df48.firebasestorage.app", // EU region format (.firebasestorage.app)
+  messagingSenderId: "664136376571", 
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
@@ -24,13 +27,13 @@ const firebaseConfig = {
 console.log("Firebase config (without sensitive data):", {
   authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: "memorybook2-4df48.appspot.com",
+  storageBucket: "memorybook2-4df48.firebasestorage.app",
   hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
   hasAppId: !!import.meta.env.VITE_FIREBASE_APP_ID
 });
 
 // Explicitly log the full storage bucket for debugging
-console.log(`Storage bucket configured as: memorybook2-4df48.appspot.com`);
+console.log(`Storage bucket configured as: memorybook2-4df48.firebasestorage.app`);
 
 // Initialize Firebase (only once)
 let app;
@@ -46,6 +49,7 @@ try {
 
 // Get services from the app
 const auth = getAuth(app);
+// Create storage with explicit region
 const storage = getStorage(app);
 const firestore = getFirestore(app);
 

@@ -63,6 +63,7 @@ export async function checkFirebaseStorage(): Promise<boolean> {
     }
     
     console.log("STORAGE DEBUG: Storage bucket:", storage?.app?.options?.storageBucket);
+    console.log("STORAGE DEBUG: Using EU storage bucket: memorybook2-4df48.firebasestorage.app in EUROPE-WEST3 region");
     
     // Create a test reference to check if storage is working
     const testRef = ref(storage, "test/storage-check.txt");
@@ -73,23 +74,23 @@ export async function checkFirebaseStorage(): Promise<boolean> {
     console.log("STORAGE DEBUG: Attempting to upload test data");
     
     try {
-      // Set up a timeout promise for upload operation
+      // Set up a timeout promise for upload operation with longer timeout for EU region
       const uploadPromise = uploadBytes(testRef, testData);
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Upload test timed out after 10 seconds")), 10000);
+        setTimeout(() => reject(new Error("Upload test timed out after 15 seconds")), 15000);
       });
       
-      console.log("STORAGE DEBUG: Running upload test with 10-second timeout");
+      console.log("STORAGE DEBUG: Running upload test with 15-second timeout (longer for EU region)");
       
       // Race the upload against the timeout
       const snapshot = await Promise.race([uploadPromise, timeoutPromise]) as any;
       console.log("STORAGE DEBUG: Test upload successful", snapshot);
       
-      // Set up a timeout promise for download URL operation
+      // Set up a timeout promise for download URL operation with longer timeout for EU region
       console.log("STORAGE DEBUG: Attempting to get download URL");
       const downloadPromise = getDownloadURL(testRef);
       const downloadTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Download URL test timed out after 8 seconds")), 8000);
+        setTimeout(() => reject(new Error("Download URL test timed out after 12 seconds")), 12000);
       });
       
       // Race the download URL against the timeout
@@ -559,10 +560,9 @@ export async function createMemory(data: {
         console.log(`UPLOAD DEBUG: Creating Firebase storage reference to ${filePath}`);
         console.log(`UPLOAD DEBUG: Storage object:`, storage ? "Exists" : "Undefined");
         console.log(`UPLOAD DEBUG: Firebase config:`, {
-          storageBucket: import.meta.env.VITE_FIREBASE_PROJECT_ID 
-            ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` 
-            : "Not configured",
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "Not set"
+          storageBucket: "memorybook2-4df48.firebasestorage.app",
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "Not set",
+          region: "EUROPE-WEST3" // The region you specified
         });
         
         // Check if the Firebase Storage is properly configured
