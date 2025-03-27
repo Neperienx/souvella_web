@@ -15,7 +15,7 @@ import {
   writeBatch,
   increment
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, UploadResult } from "firebase/storage";
 import { firestore, storage } from "./firebase";
 import { MemoryType } from "@shared/schema";
 
@@ -62,6 +62,8 @@ export async function checkFirebaseStorage(): Promise<boolean> {
       return false;
     }
     
+    console.log("STORAGE DEBUG: Storage bucket:", storage?.app?.options?.storageBucket);
+    
     // Create a test reference to check if storage is working
     const testRef = ref(storage, "test/storage-check.txt");
     console.log("STORAGE DEBUG: Successfully created test reference", testRef);
@@ -71,23 +73,59 @@ export async function checkFirebaseStorage(): Promise<boolean> {
     console.log("STORAGE DEBUG: Attempting to upload test data");
     
     try {
-      const snapshot = await uploadBytes(testRef, testData);
+      // Set up a timeout promise for upload operation
+      const uploadPromise = uploadBytes(testRef, testData);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Upload test timed out after 10 seconds")), 10000);
+      });
+      
+      console.log("STORAGE DEBUG: Running upload test with 10-second timeout");
+      
+      // Race the upload against the timeout
+      const snapshot = await Promise.race([uploadPromise, timeoutPromise]) as any;
       console.log("STORAGE DEBUG: Test upload successful", snapshot);
       
-      // Try to get download URL
-      const url = await getDownloadURL(testRef);
-      console.log("STORAGE DEBUG: Test download URL obtained:", url);
+      // Set up a timeout promise for download URL operation
+      console.log("STORAGE DEBUG: Attempting to get download URL");
+      const downloadPromise = getDownloadURL(testRef);
+      const downloadTimeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Download URL test timed out after 8 seconds")), 8000);
+      });
+      
+      // Race the download URL against the timeout
+      const url = await Promise.race([downloadPromise, downloadTimeoutPromise]) as string;
+      console.log("STORAGE DEBUG: Test download URL obtained:", url.substring(0, 30) + "...");
       
       return true;
     } catch (uploadError) {
       console.error("STORAGE DEBUG: Test upload failed", uploadError);
       if (uploadError instanceof Error) {
         console.error("STORAGE DEBUG: Error message:", uploadError.message);
+        console.error("STORAGE DEBUG: Error name:", uploadError.name);
+        console.error("STORAGE DEBUG: Error stack:", uploadError.stack);
       }
+      
+      // Check if the error is related to Firebase rules
+      if (uploadError instanceof Error && uploadError.message.includes("permission")) {
+        console.error("STORAGE DEBUG: Permission error - check Firebase Storage rules");
+      }
+      
+      // Check if the error is related to network
+      if (uploadError instanceof Error && 
+         (uploadError.message.includes("network") || 
+          uploadError.message.includes("timeout") || 
+          uploadError.message.includes("connection"))) {
+        console.error("STORAGE DEBUG: Network error - check internet connection");
+      }
+      
       return false;
     }
   } catch (error) {
     console.error("STORAGE DEBUG: Firebase storage check failed", error);
+    if (error instanceof Error) {
+      console.error("STORAGE DEBUG: Error message:", error.message);
+      console.error("STORAGE DEBUG: Error stack:", error.stack);
+    }
     return false;
   }
 }
@@ -536,19 +574,37 @@ export async function createMemory(data: {
           const storageRef = ref(storage, filePath);
           console.log("UPLOAD DEBUG: Storage reference created successfully", storageRef);
           
-          console.log("UPLOAD DEBUG: Beginning uploadBytes operation");
-          const snapshot = await uploadBytes(storageRef, fileToUpload);
+          // Set up a timeout promise for upload operation
+          const uploadPromise = uploadBytes(storageRef, fileToUpload);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("Upload timed out after 15 seconds")), 15000);
+          });
+          
+          console.log("UPLOAD DEBUG: Beginning uploadBytes operation (with 15-second timeout)");
+          // Race the upload against the timeout
+          const snapshot = await Promise.race([uploadPromise, timeoutPromise]) as any;
           console.log("UPLOAD DEBUG: Upload completed successfully, details:", snapshot);
           
           console.log("UPLOAD DEBUG: Getting download URL");
-          imageUrl = await getDownloadURL(snapshot.ref);
-          console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl.substring(0, 50) + "...");
+          // Add a timeout to the getDownloadURL operation too
+          const downloadUrlPromise = getDownloadURL(snapshot.ref);
+          const downloadTimeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("Get download URL timed out after 10 seconds")), 10000);
+          });
+          
+          imageUrl = await Promise.race([downloadUrlPromise, downloadTimeoutPromise]) as string;
+          console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl ? imageUrl.substring(0, 50) + "..." : "No URL received");
         } catch (storageError) {
           console.error("UPLOAD DEBUG: Storage operation error:", storageError);
           if (storageError instanceof Error) {
             console.error("UPLOAD DEBUG: Error message:", storageError.message);
             console.error("UPLOAD DEBUG: Error name:", storageError.name);
+            console.error("UPLOAD DEBUG: Error stack:", storageError.stack);
           }
+          
+          // Log additional storage diagnostics
+          console.error("UPLOAD DEBUG: Storage bucket check:", storage?.app?.options?.storageBucket);
+          
           throw storageError; // Re-throw to the outer catch block
         }
       } catch (uploadError) {
