@@ -81,9 +81,9 @@ export default function Header({
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="w-10 h-10 bg-[var(--primary)] rounded-full flex items-center justify-center">
-            <span className="font-script text-xl text-white">MJ</span>
+            <span className="font-script text-xl text-white">S</span>
           </div>
-          <h1 className="font-serif text-xl md:text-2xl hidden sm:block">Memory Jar</h1>
+          <h1 className="font-serif text-xl md:text-2xl hidden sm:block">Souvella</h1>
         </div>
         
         <div className="flex items-center space-x-4">

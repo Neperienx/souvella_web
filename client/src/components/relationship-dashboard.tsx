@@ -59,7 +59,7 @@ export default function RelationshipDashboard({ userId, onRelationshipCreated }:
       <div className="paper-clip"></div>
       <div className="tape w-32 -left-6 top-10 rotate-12"></div>
       
-      <h2 className="font-serif text-2xl mb-2 text-center">Welcome to Memory Jar</h2>
+      <h2 className="font-serif text-2xl mb-2 text-center">Welcome to Souvella</h2>
       <p className="font-script text-xl text-center mb-2 text-[var(--charcoal)]/80">
         Your digital memory scrapbook
       </p>
@@ -124,7 +124,7 @@ export default function RelationshipDashboard({ userId, onRelationshipCreated }:
         )}
         
         <div className="bg-[var(--cream)]/50 p-4 rounded-xl">
-          <h3 className="font-serif text-lg mb-2">How Memory Jar Works</h3>
+          <h3 className="font-serif text-lg mb-2">How Souvella Works</h3>
           <div className="space-y-3">
             <div className="flex items-start">
               <div className="flex-shrink-0 w-6 h-6 bg-[var(--primary)]/20 rounded-full flex items-center justify-center mr-2">

@@ -227,10 +227,31 @@ export async function regenerateDailyMemories(relationshipId: number, count: num
       return [];
     }
     
-    console.log(`Found ${memoriesSnapshot.docs.length} total memories to select from`);
+    // Get today's date at midnight for comparison
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
     
-    // Convert all memories to Memory objects
-    const allMemories = memoriesSnapshot.docs.map(convertToMemory);
+    // Filter out memories that were created today or have isNew flag
+    const allMemories = memoriesSnapshot.docs
+      .filter(doc => {
+        const data = doc.data() as FirestoreMemory;
+        
+        // Skip if explicitly marked as new
+        if (data.isNew === true) {
+          return false;
+        }
+        
+        // Skip if created today
+        if (data.createdAt) {
+          const createdDate = data.createdAt.toDate();
+          return createdDate < todayStart; // Only include memories from before today
+        }
+        
+        return true; // Include if it doesn't have a creation date
+      })
+      .map(convertToMemory);
+    
+    console.log(`Found ${memoriesSnapshot.docs.length} total memories, ${allMemories.length} non-new memories to select from`);
     
     // If we have fewer memories than requested, return all of them
     if (allMemories.length <= count) {
@@ -793,10 +814,33 @@ export async function selectRandomMemoriesForDay(relationshipId: number, count: 
     );
     
     const querySnapshot = await getDocs(q);
-    const allMemories = querySnapshot.docs.map(convertToMemory);
+    
+    // Get today's date at midnight for comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Filter out memories that were created today or have isNew flag
+    const allMemories = querySnapshot.docs
+      .filter(doc => {
+        const data = doc.data() as FirestoreMemory;
+        
+        // Skip if explicitly marked as new
+        if (data.isNew === true) {
+          return false;
+        }
+        
+        // Skip if created today
+        if (data.createdAt) {
+          const createdDate = data.createdAt.toDate();
+          return createdDate < today; // Only include memories from before today
+        }
+        
+        return true; // Include if it doesn't have a creation date
+      })
+      .map(convertToMemory);
     
     // Debug log
-    console.log(`Found ${allMemories.length} memories for relationship ${relationshipId}`);
+    console.log(`Found ${allMemories.length} non-new memories for relationship ${relationshipId}`);
     
     // If we have fewer memories than requested, return all of them
     if (allMemories.length <= count) {
