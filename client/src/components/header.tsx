@@ -5,6 +5,7 @@ import { Relationship } from "@shared/schema";
 import { useMarkMemoriesAsViewed } from "@/hooks/use-memories";
 import { queryClient } from "@/lib/queryClient";
 import UserSettingsModal from "./user-settings-modal";
+import { useLocation } from "wouter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,10 +34,13 @@ export default function Header({
   const { toast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
   const markAsViewed = useMarkMemoriesAsViewed(relationship?.id || null);
+  const [, navigate] = useLocation();
   
   const handleLogout = async () => {
     try {
       await logOut();
+      // Navigate to login screen after logout
+      navigate("/");
       toast({
         title: "Logged Out",
         description: "You have been successfully logged out",
@@ -86,7 +90,7 @@ export default function Header({
           <div className="hidden md:flex items-center">
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center space-x-1 text-sm bg-[var(--cream)] py-1 px-3 rounded-full shadow-sm hover:bg-[var(--primary-light)] transition-colors">
-                <span className="font-medium">{relationship ? `${userName}'s Memories` : <span className="text-[var(--primary-dark)] cursor-pointer" onClick={() => window.location.href = "/dashboard"}>+ Create Relationship</span>}</span>
+                <span className="font-medium">{relationship ? `${userName}'s Memories` : <span className="text-[var(--primary-dark)] cursor-pointer" onClick={() => navigate("/dashboard")}>+ Create Relationship</span>}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                   <path d="M10 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM10 8.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM11.5 15.5a1.5 1.5 0 10-3 0 1.5 1.5 0 003 0z" />
                 </svg>
@@ -105,7 +109,7 @@ export default function Header({
                       </DropdownMenuItem>
                     )}
                     
-                    <DropdownMenuItem onClick={() => window.location.href = "/dashboard"}>
+                    <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                       Manage Relationships
                     </DropdownMenuItem>
                     
