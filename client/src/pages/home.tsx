@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth";
 import { useUserRelationship } from "../hooks/use-relationship";
@@ -22,32 +22,20 @@ import MemoryCard from "../components/memory-card";
 import { formatDate } from "../lib/utils";
 
 export default function HomePage() {
+  // 1. State hooks
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  
+  // 2. Data fetching hooks
   const { user } = useAuth();
   const [_, navigate] = useLocation();
-  
-  // Get user's relationship data
   const { data: relationship, isLoading: relationshipLoading } = useUserRelationship(user?.uid || null);
-  
-  // Get daily memories for this relationship
   const { data: dailyMemories, isLoading: memoriesLoading } = useDailyMemories(relationship?.id || null);
-  
-  // Get all memories for this relationship
   const { data: allMemories } = useRelationshipMemories(relationship?.id || null);
-  
-  // Filter today's uploaded memories (using string comparison instead of trying to convert UID to number)
-  const todaysDate = new Date().toISOString().split('T')[0];
-  const todaysUploadedMemories = (allMemories || []).filter(memory => {
-    const memoryDate = new Date(memory.createdAt).toISOString().split('T')[0];
-    return memoryDate === todaysDate && String(memory.userId) === user?.uid;
-  });
-  
-  // Get newly added memories
-  const { data: newMemories, isLoading: newMemoriesLoading } = useNewMemories(relationship?.id || null);
-  
-  // Mark new memories as viewed after 5 seconds
+  const { data: newMemories } = useNewMemories(relationship?.id || null);
   const { mutate: markAsViewed } = useMarkMemoriesAsViewed(relationship?.id || null);
+  const { data: userNickname } = useUserNickname(user?.uid || null, relationship?.id || null);
   
+  // 3. Side effects
   useEffect(() => {
     if (newMemories && newMemories.length > 0) {
       const timer = setTimeout(() => {
@@ -57,23 +45,32 @@ export default function HomePage() {
       return () => clearTimeout(timer);
     }
   }, [newMemories, markAsViewed]);
-
-  // Handle navigation
+  
+  // 4. Derived values
+  const todaysDate = new Date().toISOString().split('T')[0];
+  const todaysUploadedMemories = (allMemories || []).filter(memory => {
+    const memoryDate = new Date(memory.createdAt).toISOString().split('T')[0];
+    return memoryDate === todaysDate && String(memory.userId) === user?.uid;
+  });
+  
+  // 5. Handler functions
   const handleTimelineClick = () => {
     navigate("/timeline");
   };
-
-  // Show invite modal
+  
   const showInviteModal = () => {
     console.log("Opening invite modal");
-    // Ensure we have the latest relationship data
     queryClient.invalidateQueries({ queryKey: ["relationships/user", user?.uid] });
-    // Short delay to ensure we have the latest data
     setTimeout(() => {
       setIsInviteModalOpen(true);
     }, 300);
   };
-
+  
+  const handleViewNotifications = () => {
+    queryClient.invalidateQueries({ queryKey: ["newMemories", relationship?.id] });
+  };
+  
+  // 6. Loading state
   if (relationshipLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[var(--cream)]">
@@ -84,18 +81,6 @@ export default function HomePage() {
       </div>
     );
   }
-  
-  // Function to handle viewing notifications in UI
-  const handleViewNotifications = () => {
-    // Manually trigger a re-fetch of new memories to reflect changes
-    queryClient.invalidateQueries({ queryKey: ["newMemories", relationship?.id] });
-  };
-
-  // Get user's nickname if available
-  const { data: userNickname } = useUserNickname(
-    user?.uid || null,
-    relationship?.id || null
-  );
   
   return (
     <div className="min-h-screen bg-[var(--cream)]">

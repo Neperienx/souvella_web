@@ -69,6 +69,7 @@ export default function TimelinePage() {
     return memory.type === activeFilter;
   }) || [];
 
+  // Return loading state if relationship data is still loading
   if (relationshipLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[var(--cream)]">
