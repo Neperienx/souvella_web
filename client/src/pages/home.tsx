@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth";
 import { useUserRelationship } from "../hooks/use-relationship";
+import { useUserNickname } from "@/hooks/use-relationship-settings";
 import { 
   useDailyMemories, 
   useRelationshipMemories, 
@@ -84,14 +85,27 @@ export default function HomePage() {
     );
   }
   
+  // Function to handle viewing notifications in UI
+  const handleViewNotifications = () => {
+    // Manually trigger a re-fetch of new memories to reflect changes
+    queryClient.invalidateQueries({ queryKey: ["newMemories", relationship?.id] });
+  };
+
+  // Get user's nickname if available
+  const { data: userNickname } = useUserNickname(
+    user?.uid || null,
+    relationship?.id || null
+  );
+  
   return (
     <div className="min-h-screen bg-[var(--cream)]">
       <Header 
-        userName={user?.displayName || "User"} 
-        notifications={2} 
+        userName={userNickname || user?.displayName || "User"} 
+        notifications={newMemories?.length || 0} 
         photoURL={user?.photoURL || undefined}
         relationship={relationship || undefined}
         onShowInvite={showInviteModal}
+        onViewNotifications={handleViewNotifications}
       />
       
       <main className="container mx-auto px-4 py-6">

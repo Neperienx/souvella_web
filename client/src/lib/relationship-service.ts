@@ -29,6 +29,7 @@ interface FirestoreRelationship {
 interface FirestoreUserRelationship {
   userId: string;
   relationshipId: string;
+  nickname?: string; // User's nickname in this relationship
   createdAt: Timestamp;
 }
 
@@ -271,5 +272,72 @@ export async function getUserPrimaryRelationship(userId: string): Promise<Relati
   } catch (error) {
     console.error("Error getting user's primary relationship:", error);
     throw error;
+  }
+}
+
+// Get a user's nickname in a specific relationship
+export async function getUserNickname(userId: string, relationshipId: number): Promise<string | null> {
+  try {
+    // Convert relationshipId to string for consistency
+    const relationshipIdString = relationshipId.toString();
+    
+    console.log(`Getting nickname for user ${userId} in relationship ${relationshipId}`);
+    
+    const q = query(
+      userRelationshipsCollection,
+      where("userId", "==", userId),
+      where("relationshipId", "==", relationshipIdString)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log("No user relationship found");
+      return null;
+    }
+    
+    const data = querySnapshot.docs[0].data() as FirestoreUserRelationship;
+    return data.nickname || null;
+  } catch (error) {
+    console.error("Error getting user nickname:", error);
+    return null;
+  }
+}
+
+// Update a user's nickname in a relationship
+export async function updateUserNickname(
+  userId: string, 
+  relationshipId: number, 
+  nickname: string
+): Promise<boolean> {
+  try {
+    // Convert relationshipId to string for consistency
+    const relationshipIdString = relationshipId.toString();
+    
+    console.log(`Updating nickname for user ${userId} in relationship ${relationshipId} to: ${nickname}`);
+    
+    // Find the user relationship document
+    const q = query(
+      userRelationshipsCollection,
+      where("userId", "==", userId),
+      where("relationshipId", "==", relationshipIdString)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.error("No user relationship found to update nickname");
+      return false;
+    }
+    
+    // Update the nickname
+    const docRef = querySnapshot.docs[0].ref;
+    await updateDoc(docRef, { nickname });
+    
+    console.log("Nickname updated successfully");
+    return true;
+  } catch (error) {
+    console.error("Error updating user nickname:", error);
+    return false;
   }
 }

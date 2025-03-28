@@ -2,11 +2,14 @@ import { useState } from "react";
 import { logOut } from "../lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Relationship } from "@shared/schema";
+import { useMarkMemoriesAsViewed } from "@/hooks/use-memories";
+import UserSettingsModal from "./user-settings-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 interface HeaderProps {
@@ -15,10 +18,20 @@ interface HeaderProps {
   photoURL?: string;
   relationship?: Relationship | null;
   onShowInvite?: () => void;
+  onViewNotifications?: () => void;
 }
 
-export default function Header({ userName, notifications, photoURL, relationship, onShowInvite }: HeaderProps) {
+export default function Header({ 
+  userName, 
+  notifications, 
+  photoURL, 
+  relationship, 
+  onShowInvite,
+  onViewNotifications
+}: HeaderProps) {
   const { toast } = useToast();
+  const [showSettings, setShowSettings] = useState(false);
+  const markAsViewed = useMarkMemoriesAsViewed(relationship?.id || null);
   
   const handleLogout = async () => {
     try {
@@ -32,6 +45,23 @@ export default function Header({ userName, notifications, photoURL, relationship
         title: "Error",
         description: "Failed to log out",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handleNotificationClick = () => {
+    // Mark memories as viewed when notifications are clicked
+    if (relationship?.id && notifications > 0) {
+      markAsViewed.mutate();
+      
+      // Call the parent callback if provided
+      if (onViewNotifications) {
+        onViewNotifications();
+      }
+      
+      toast({
+        title: "Notifications Cleared",
+        description: "All new memories have been marked as read",
       });
     }
   };
@@ -57,13 +87,22 @@ export default function Header({ userName, notifications, photoURL, relationship
               </DropdownMenuTrigger>
               
               <DropdownMenuContent>
-                {relationship && onShowInvite ? (
+                {relationship ? (
                   <>
-                    <DropdownMenuItem onClick={onShowInvite}>
-                      Share Invite Code
+                    <DropdownMenuItem onClick={() => setShowSettings(true)}>
+                      Profile Settings
                     </DropdownMenuItem>
+                    
+                    {onShowInvite && (
+                      <DropdownMenuItem onClick={onShowInvite}>
+                        Share Invite Code
+                      </DropdownMenuItem>
+                    )}
+                    
+                    <DropdownMenuSeparator />
                   </>
                 ) : null}
+                
                 <DropdownMenuItem onClick={handleLogout}>
                   Logout
                 </DropdownMenuItem>
@@ -71,12 +110,17 @@ export default function Header({ userName, notifications, photoURL, relationship
             </DropdownMenu>
           </div>
           
-          <button className="daily-reminder p-2 bg-[var(--secondary)]/40 rounded-full hover:bg-[var(--secondary)]/70 transition-all relative">
+          <button 
+            className="daily-reminder p-2 bg-[var(--secondary)]/40 rounded-full hover:bg-[var(--secondary)]/70 transition-all relative"
+            onClick={handleNotificationClick}
+            aria-label={notifications > 0 ? `${notifications} new memories` : "No new notifications"}
+            title={notifications > 0 ? `${notifications} new memories` : "No new notifications"}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
             </svg>
             {notifications > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[var(--primary)] w-4 h-4 rounded-full text-xs flex items-center justify-center text-white">
+              <span className="absolute -top-1 -right-1 bg-[var(--primary)] w-5 h-5 rounded-full text-xs flex items-center justify-center text-white animate-pulse">
                 {notifications}
               </span>
             )}
@@ -91,6 +135,14 @@ export default function Header({ userName, notifications, photoURL, relationship
           </div>
         </div>
       </div>
+      
+      {relationship && (
+        <UserSettingsModal 
+          isOpen={showSettings} 
+          onClose={() => setShowSettings(false)} 
+          relationshipId={relationship.id} 
+        />
+      )}
     </header>
   );
 }

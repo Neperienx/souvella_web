@@ -1,9 +1,11 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth";
 import { useUserRelationship } from "../hooks/use-relationship";
-import { useRelationshipMemories } from "../hooks/use-memories";
+import { useRelationshipMemories, useNewMemories, useMarkMemoriesAsViewed } from "../hooks/use-memories";
+import { useUserNickname } from "@/hooks/use-relationship-settings"; 
 import { Memory } from "@/lib/firebase-service";
+import { queryClient } from "@/lib/queryClient";
 
 import Header from "../components/header";
 import MemoryTimeline from "../components/memory-timeline";
@@ -21,6 +23,23 @@ export default function TimelinePage() {
   
   // Get all memories for this relationship
   const { data: memories, isLoading: memoriesLoading } = useRelationshipMemories(relationship?.id || null);
+  
+  // Get newly added memories
+  const { data: newMemories, isLoading: newMemoriesLoading } = useNewMemories(relationship?.id || null);
+  
+  // Mark new memories as viewed after 5 seconds
+  const { mutate: markAsViewed } = useMarkMemoriesAsViewed(relationship?.id || null);
+  
+  // Use effect to mark memories as viewed after a delay (similar to home page)
+  useEffect(() => {
+    if (newMemories && newMemories.length > 0) {
+      const timer = setTimeout(() => {
+        markAsViewed();
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [newMemories, markAsViewed]);
 
   // Handle navigation
   const handleHomeClick = () => {
@@ -32,6 +51,18 @@ export default function TimelinePage() {
     setIsInviteModalOpen(true);
   };
 
+  // Get user's nickname if available
+  const { data: userNickname } = useUserNickname(
+    user?.uid || null,
+    relationship?.id || null
+  );
+  
+  // Function to handle viewing notifications in UI
+  const handleViewNotifications = () => {
+    // Manually trigger a re-fetch of new memories to reflect changes
+    queryClient.invalidateQueries({ queryKey: ["newMemories", relationship?.id] });
+  };
+  
   // Filter memories
   const filteredMemories = memories?.filter(memory => {
     if (activeFilter === "all") return true;
@@ -52,11 +83,12 @@ export default function TimelinePage() {
   return (
     <div className="min-h-screen bg-[var(--cream)]">
       <Header 
-        userName={user?.displayName || "User"} 
-        notifications={2} 
+        userName={userNickname || user?.displayName || "User"} 
+        notifications={newMemories?.length || 0} 
         photoURL={user?.photoURL || undefined}
         relationship={relationship || undefined}
         onShowInvite={showInviteModal}
+        onViewNotifications={handleViewNotifications}
       />
       
       <main className="container mx-auto px-4 py-6">
