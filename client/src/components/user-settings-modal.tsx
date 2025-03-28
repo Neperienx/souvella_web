@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,7 +53,7 @@ export default function UserSettingsModal({ isOpen, onClose, relationshipId }: U
   });
   
   // When the nickname data loads, update the form
-  useState(() => {
+  useEffect(() => {
     if (isOpen && !isNicknameLoading) {
       if (currentNickname) {
         form.setValue("nickname", currentNickname);
@@ -61,7 +61,7 @@ export default function UserSettingsModal({ isOpen, onClose, relationshipId }: U
         form.setValue("nickname", user.displayName);
       }
     }
-  });
+  }, [isOpen, isNicknameLoading, currentNickname, user?.displayName, form]);
   
   // Handle form submission
   const onSubmit = (data: NicknameFormValues) => {

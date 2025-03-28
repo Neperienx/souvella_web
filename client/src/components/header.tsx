@@ -3,6 +3,7 @@ import { logOut } from "../lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Relationship } from "@shared/schema";
 import { useMarkMemoriesAsViewed } from "@/hooks/use-memories";
+import { queryClient } from "@/lib/queryClient";
 import UserSettingsModal from "./user-settings-modal";
 import {
   DropdownMenu,
@@ -52,16 +53,21 @@ export default function Header({
   const handleNotificationClick = () => {
     // Mark memories as viewed when notifications are clicked
     if (relationship?.id && notifications > 0) {
-      markAsViewed.mutate();
-      
-      // Call the parent callback if provided
-      if (onViewNotifications) {
-        onViewNotifications();
-      }
-      
-      toast({
-        title: "Notifications Cleared",
-        description: "All new memories have been marked as read",
+      markAsViewed.mutate(undefined, {
+        onSuccess: () => {
+          // Immediately invalidate the query to update the badge count
+          queryClient.invalidateQueries({ queryKey: ["newMemories", relationship.id] });
+          
+          // Call the parent callback if provided
+          if (onViewNotifications) {
+            onViewNotifications();
+          }
+          
+          toast({
+            title: "Notifications Cleared",
+            description: "All new memories have been marked as read",
+          });
+        }
       });
     }
   };
@@ -126,13 +132,18 @@ export default function Header({
             )}
           </button>
           
-          <div className="h-10 w-10 rounded-full bg-[var(--primary-light)] flex items-center justify-center overflow-hidden">
+          <button 
+            onClick={() => relationship && setShowSettings(true)}
+            className="h-10 w-10 rounded-full bg-[var(--primary-light)] flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-[var(--primary)] transition-all"
+            title={relationship ? "Edit Profile Settings" : "Sign in to customize profile"}
+            aria-label="User settings"
+          >
             {photoURL ? (
               <img src={photoURL} alt="Profile" className="object-cover w-full h-full" />
             ) : (
               <span className="font-medium text-sm">{userName.charAt(0)}</span>
             )}
-          </div>
+          </button>
         </div>
       </div>
       
