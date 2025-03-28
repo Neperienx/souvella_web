@@ -11,9 +11,14 @@ import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
 import AudioRecorder from "./audio-recorder";
 
-// Form schema with optional caption field
+// Form schema with conditional validation
 const memorySchema = z.object({
-  content: z.string().min(1, "Please enter some text for your memory"),
+  content: z.string()
+    .refine(val => val.trim().length > 0, {
+      message: "Please enter some text for your memory",
+      // Content is required only when file is not selected
+      path: ["content"]
+    }),
   caption: z.string().optional(),
 });
 
@@ -42,6 +47,28 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     defaultValues: {
       content: "",
     },
+    // Skip content validation when a file is selected
+    mode: "onSubmit",
+  });
+  
+  // Custom validation handler
+  const handleFormSubmit = form.handleSubmit((data: MemoryFormValues) => {
+    // Override validation: if a file is selected, content field is not required
+    if (file && (memoryType === "image" || memoryType === "audio")) {
+      // Set a default content value if empty
+      if (!data.content.trim()) {
+        if (memoryType === "image") {
+          form.setValue("content", "Image memory");
+        } else {
+          form.setValue("content", "Voice memory");
+        }
+      }
+      // Proceed with submission
+      onSubmit({...data, content: data.content || (memoryType === "image" ? "Image memory" : "Voice memory")});
+    } else {
+      // Normal submission (text only memories require content)
+      onSubmit(data);
+    }
   });
 
   const handleAddPhoto = () => {
@@ -293,12 +320,20 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     const actualMemoryType = file ? memoryType : "text";
     console.log(`SUBMIT DEBUG: Memory type set to ${actualMemoryType} (selected type was ${memoryType}, file present: ${!!file})`);
     
+    // For image or audio, if content is empty, set a default value
+    let contentValue = data.content;
+    if (actualMemoryType === "image" && !contentValue.trim()) {
+      contentValue = "Image memory";
+    } else if (actualMemoryType === "audio" && !contentValue.trim()) {
+      contentValue = "Voice memory";
+    }
+    
     // Prepare memory data with correct file handling
     const memoryData = {
       userId: firebaseUid,
       relationshipId,
       type: actualMemoryType,
-      content: data.content,
+      content: contentValue,
       caption: (actualMemoryType === "image" || actualMemoryType === "audio") ? data.caption : undefined,
       file: file ? file : undefined
     };
@@ -348,17 +383,22 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
           </>
         )}
         
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleFormSubmit} className="space-y-4">
           <div className="flex flex-col space-y-3">
-            <textarea 
-              {...form.register("content")}
-              placeholder="Write your memory here..." 
-              className="w-full p-4 rounded-xl border border-gray-200 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-light)] focus:outline-none min-h-[100px] bg-white/90"
-              disabled={isPending}
-            />
-            
-            {form.formState.errors.content && (
-              <p className="text-red-500 text-sm">{form.formState.errors.content.message}</p>
+            {/* Only show text area when no file is selected or when memory type is text */}
+            {(!file || memoryType === "text") && (
+              <>
+                <textarea 
+                  {...form.register("content")}
+                  placeholder="Write your memory here..." 
+                  className="w-full p-4 rounded-xl border border-gray-200 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary-light)] focus:outline-none min-h-[100px] bg-white/90"
+                  disabled={isPending}
+                />
+                
+                {form.formState.errors.content && (
+                  <p className="text-red-500 text-sm">{form.formState.errors.content.message}</p>
+                )}
+              </>
             )}
             
             {file && memoryType === "image" && (
