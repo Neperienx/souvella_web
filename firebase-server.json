@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "source": "dist",
+    "ignore": [
+      "firebase.json",
+      "firebase-debug.log",
+      "public/**"
+    ]
+  }
+}
