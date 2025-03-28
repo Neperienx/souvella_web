@@ -18,6 +18,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 // Relationship table
 export const relationships = pgTable("relationships", {
   id: serial("id").primaryKey(),
+  name: text("name"),
   inviteCode: text("invite_code").notNull().unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

@@ -54,12 +54,21 @@ export function getTapePosition(index: number): string {
 }
 
 // Function to determine if a user has uploaded a memory today
-export function hasUploadedToday(memories: any[], userId: string): boolean {
+export function hasUploadedToday(memories: any[], userId: string, relationshipId?: number): boolean {
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
   
   return memories.some(memory => {
     const memoryDate = new Date(memory.createdAt).toISOString().split('T')[0];
-    return memory.userId === userId && memoryDate === todayString;
+    
+    if (relationshipId) {
+      // Check for specific relationship
+      return memory.userId === userId && 
+             memory.relationshipId === relationshipId && 
+             memoryDate === todayString;
+    } else {
+      // Check across all relationships (original behavior)
+      return memory.userId === userId && memoryDate === todayString;
+    }
   });
 }

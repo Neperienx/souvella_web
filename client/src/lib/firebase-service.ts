@@ -618,6 +618,52 @@ function formatDateForStorage(date: Date): string {
 }
 
 // Get user's remaining thumbs up count for today
+// Function to check if a user has uploaded a memory to a relationship today
+export async function getUserDailyUploadStatus(userId: string, relationshipId: number): Promise<{
+  hasUploaded: boolean;
+  todaysMemory?: Memory;
+}> {
+  try {
+    // Convert relationshipId to string for Firestore consistency
+    const relationshipIdString = relationshipId.toString();
+    
+    // Get today's date at midnight for comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // First get all memories for this relationship
+    const q = query(
+      memoriesCollection,
+      where("relationshipId", "==", relationshipIdString)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    // Filter to find if this user has already uploaded a memory today
+    for (const doc of querySnapshot.docs) {
+      const memory = convertToMemory(doc);
+      
+      // Check if memory is from today and from this user
+      if (memory.userId === userId && memory.createdAt >= today) {
+        return {
+          hasUploaded: true,
+          todaysMemory: memory
+        };
+      }
+    }
+    
+    // No upload found for today
+    return {
+      hasUploaded: false
+    };
+  } catch (error) {
+    console.error("Error checking daily upload status:", error);
+    return {
+      hasUploaded: false
+    }; 
+  }
+}
+
 export async function getUserRemainingThumbsUp(userId: string): Promise<number> {
   try {
     const MAX_DAILY_THUMBS_UP = 2;

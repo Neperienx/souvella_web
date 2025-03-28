@@ -7,7 +7,8 @@ import {
   getUserRelationships as getRelationships,
   createRelationship, 
   addUserToRelationship,
-  getRelationshipByInviteCode
+  getRelationshipByInviteCode,
+  updateRelationshipName
 } from "@/lib/relationship-service";
 
 // Hook to fetch user's primary relationship
@@ -76,6 +77,52 @@ export function useCreateRelationship() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create relationship",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+// Hook to update a relationship's name
+export function useUpdateRelationshipName() {
+  const { toast } = useToast();
+  
+  return useMutation({
+    mutationFn: async ({ relationshipId, name }: { relationshipId: number; name: string }) => {
+      try {
+        console.log("Updating relationship name:", relationshipId, "to:", name);
+        
+        const updatedRelationship = await updateRelationshipName(relationshipId, name);
+        
+        if (!updatedRelationship) {
+          throw new Error("Failed to update relationship name");
+        }
+        
+        return updatedRelationship;
+      } catch (error) {
+        console.error("Error in updateRelationshipName mutation:", error);
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      console.log("Successfully updated relationship name:", data);
+      
+      // Invalidate the relationship queries
+      queryClient.invalidateQueries({ queryKey: ["relationships/user/primary"] });
+      queryClient.invalidateQueries({ queryKey: ["relationships/user/all"] });
+      
+      toast({
+        title: "Name Updated",
+        description: "Relationship name has been updated successfully.",
+      });
+      
+      return data;
+    },
+    onError: (error) => {
+      console.error("Error updating relationship name:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update relationship name",
         variant: "destructive",
       });
     },

@@ -48,7 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Relationship routes
   app.post("/api/relationships", async (req: Request, res: Response) => {
     try {
-      const { uid } = req.body;
+      const { uid, name } = req.body;
       
       if (!uid) {
         return res.status(400).json({ message: "User ID is required" });
@@ -60,8 +60,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Create a new relationship (allowing multiple relationships)
-      const relationship = await storage.createRelationship();
+      // Create a new relationship (allowing multiple relationships), with optional name
+      const relationship = await storage.createRelationship(name);
       
       // Add user to relationship
       await storage.addUserToRelationship(user.id, relationship.id);
@@ -69,6 +69,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json(relationship);
     } catch (error) {
       return res.status(500).json({ message: "Failed to create relationship" });
+    }
+  });
+  
+  app.patch("/api/relationships/:id/name", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { name } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Relationship name is required" });
+      }
+      
+      const relationshipId = parseInt(id);
+      if (isNaN(relationshipId)) {
+        return res.status(400).json({ message: "Invalid relationship ID" });
+      }
+      
+      const updatedRelationship = await storage.updateRelationshipName(relationshipId, name);
+      
+      if (!updatedRelationship) {
+        return res.status(404).json({ message: "Relationship not found" });
+      }
+      
+      return res.json(updatedRelationship);
+    } catch (error) {
+      return res.status(500).json({ message: "Failed to update relationship name" });
     }
   });
 

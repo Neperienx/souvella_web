@@ -21,6 +21,7 @@ import RelationshipDashboard from "../components/relationship-dashboard";
 import MobileNavigation from "../components/mobile-navigation";
 import InvitePartnerModal from "../components/invite-partner-modal";
 import MemoryCard from "../components/memory-card";
+import RelationshipNameEditor from "../components/relationship-name-editor";
 import { formatDate } from "../lib/utils";
 
 interface HomePageProps {
@@ -164,6 +165,18 @@ export default function HomePage({ params }: HomePageProps) {
                 </div>
               </section>
             )}
+            
+            {/* Relationship Name Editor */}
+            <div className="mb-6 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-3 shadow-sm flex items-center justify-between">
+              <RelationshipNameEditor relationship={relationship} />
+              
+              <button
+                onClick={showInviteModal}
+                className="text-sm px-3 py-1 bg-[var(--primary-light)] text-[var(--primary-dark)] rounded-md hover:bg-[var(--primary-light)/80] transition"
+              >
+                Invite Partner
+              </button>
+            </div>
             
             {/* Daily Memories Section */}
             <DailyMemories 

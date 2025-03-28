@@ -11,7 +11,8 @@ import {
   reactToMemory as reactToFirestoreMemory,
   markMemoriesAsViewed,
   getUserRemainingThumbsUp,
-  regenerateDailyMemories
+  regenerateDailyMemories,
+  getUserDailyUploadStatus
 } from "@/lib/firebase-service";
 
 // Hook to fetch all memories for a relationship
@@ -100,6 +101,14 @@ export function useCreateMemory() {
         contentLength: memory.content?.length || 0
       });
       
+      // Check if user has already uploaded a memory today for this relationship
+      const uploadStatus = await getUserDailyUploadStatus(memory.userId, memory.relationshipId);
+      
+      if (uploadStatus.hasUploaded) {
+        console.log("MUTATION DEBUG: User has already uploaded a memory today for this relationship");
+        throw new Error("You've already shared a memory today. Come back tomorrow!");
+      }
+      
       try {
         // Use Firestore to create the memory
         const result = await createFirestoreMemory(memory);
@@ -127,6 +136,9 @@ export function useCreateMemory() {
       queryClient.invalidateQueries({ queryKey: ["memories", variables.relationshipId] });
       queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
       queryClient.invalidateQueries({ queryKey: ["newMemories", variables.relationshipId] });
+      
+      // Also invalidate daily upload status
+      queryClient.invalidateQueries({ queryKey: ["dailyUploadStatus", variables.userId, variables.relationshipId] });
       
       toast({
         title: "Memory Created",
@@ -156,6 +168,21 @@ export function useCreateMemory() {
         variant: "destructive",
       });
     },
+  });
+}
+
+// Hook to check if a user has uploaded a memory today for a specific relationship
+export function useUserDailyUploadStatus(userId: string | null, relationshipId: number | null) {
+  return useQuery<{hasUploaded: boolean, todaysMemory?: Memory}>({
+    queryKey: ["dailyUploadStatus", userId, relationshipId],
+    queryFn: async () => {
+      if (!userId || !relationshipId) return { hasUploaded: false };
+      return getUserDailyUploadStatus(userId, relationshipId);
+    },
+    enabled: !!userId && !!relationshipId,
+    // Refresh every minute to ensure status is current
+    refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: true
   });
 }
 

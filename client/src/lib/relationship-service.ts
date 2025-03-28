@@ -22,6 +22,7 @@ const userRelationshipsCollection = collection(firestore, "userRelationships");
 
 // Interface for Firestore relationship document
 interface FirestoreRelationship {
+  name?: string;
   inviteCode: string;
   createdAt: Timestamp;
 }
@@ -50,6 +51,7 @@ function convertToRelationship(doc: QueryDocumentSnapshot): Relationship {
   const id = Number(doc.id);
   return {
     id: isNaN(id) ? 0 : id, // Use a default value if conversion fails
+    name: data.name || null,
     inviteCode: data.inviteCode,
     createdAt: data.createdAt?.toDate() || new Date() // Handle potentially missing timestamp
   };
@@ -184,7 +186,7 @@ export async function getUserRelationships(userId: string): Promise<Relationship
 }
 
 // Create a new relationship
-export async function createRelationship(): Promise<Relationship> {
+export async function createRelationship(name?: string): Promise<Relationship> {
   try {
     const inviteCode = generateInviteCode();
     
@@ -192,10 +194,11 @@ export async function createRelationship(): Promise<Relationship> {
     const now = new Date();
     const numericId = Math.floor(now.getTime() / 1000); // Unix timestamp in seconds
     
-    console.log("Creating relationship with generated ID:", numericId);
+    console.log("Creating relationship with generated ID:", numericId, "and name:", name);
     
     // Add document with custom ID
     await setDoc(doc(relationshipsCollection, numericId.toString()), {
+      name: name || null,
       inviteCode,
       createdAt: serverTimestamp()
     });
@@ -203,6 +206,7 @@ export async function createRelationship(): Promise<Relationship> {
     // Return a properly formed relationship object
     return {
       id: numericId,
+      name: name || null,
       inviteCode,
       createdAt: now
     };
@@ -300,6 +304,51 @@ export async function getUserNickname(userId: string, relationshipId: number): P
     return data.nickname || null;
   } catch (error) {
     console.error("Error getting user nickname:", error);
+    return null;
+  }
+}
+
+// Update a relationship's name
+export async function updateRelationshipName(
+  relationshipId: number,
+  name: string
+): Promise<Relationship | null> {
+  try {
+    console.log(`Updating name for relationship ${relationshipId} to: ${name}`);
+    
+    const relationshipIdString = relationshipId.toString();
+    const docRef = doc(relationshipsCollection, relationshipIdString);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.error("Relationship not found with ID:", relationshipId);
+      return null;
+    }
+    
+    // Update the name
+    await updateDoc(docRef, { name });
+    
+    console.log("Relationship name updated successfully");
+    
+    // Get the updated relationship
+    const updatedDocSnap = await getDoc(docRef);
+    
+    if (!updatedDocSnap.exists()) {
+      console.error("Failed to retrieve updated relationship");
+      return null;
+    }
+    
+    // Create a modified relationship object manually
+    const data = updatedDocSnap.data() as FirestoreRelationship;
+    const id = Number(updatedDocSnap.id);
+    return {
+      id: isNaN(id) ? 0 : id,
+      name: data.name || null,
+      inviteCode: data.inviteCode,
+      createdAt: data.createdAt?.toDate() || new Date()
+    };
+  } catch (error) {
+    console.error("Error updating relationship name:", error);
     return null;
   }
 }

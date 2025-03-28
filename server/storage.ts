@@ -18,7 +18,8 @@ export interface IStorage {
   getRelationshipByInviteCode(code: string): Promise<Relationship | undefined>;
   getUserRelationship(userId: number): Promise<Relationship | undefined>;
   getUserRelationships(userId: number): Promise<Relationship[]>;
-  createRelationship(): Promise<Relationship>;
+  createRelationship(name?: string): Promise<Relationship>;
+  updateRelationshipName(id: number, name: string): Promise<Relationship | undefined>;
   addUserToRelationship(userId: number, relationshipId: number): Promise<UserRelationship>;
 
   // Memory operations
@@ -120,15 +121,27 @@ export class MemStorage implements IStorage {
     return relationships;
   }
 
-  async createRelationship(): Promise<Relationship> {
+  async createRelationship(name?: string): Promise<Relationship> {
     const id = this.currentId.relationship++;
     const inviteCode = nanoid(10);
     const createdAt = new Date();
     
-    const relationship: Relationship = { id, inviteCode, createdAt };
+    const relationship: Relationship = { id, inviteCode, createdAt, name: name || null };
     this.relationships.set(id, relationship);
     
     return relationship;
+  }
+  
+  async updateRelationshipName(id: number, name: string): Promise<Relationship | undefined> {
+    const relationship = this.relationships.get(id);
+    
+    if (!relationship) {
+      return undefined;
+    }
+    
+    const updatedRelationship = { ...relationship, name };
+    this.relationships.set(id, updatedRelationship);
+    return updatedRelationship;
   }
 
   async addUserToRelationship(userId: number, relationshipId: number): Promise<UserRelationship> {

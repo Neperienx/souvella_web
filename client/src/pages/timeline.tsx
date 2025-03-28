@@ -13,6 +13,7 @@ import Header from "../components/header";
 import MemoryTimeline from "../components/memory-timeline";
 import MobileNavigation from "../components/mobile-navigation";
 import InvitePartnerModal from "../components/invite-partner-modal";
+import RelationshipNameEditor from "../components/relationship-name-editor";
 
 interface TimelinePageProps {
   params?: {
@@ -120,6 +121,19 @@ export default function TimelinePage({ params }: TimelinePageProps) {
       />
       
       <main className="container mx-auto px-4 py-6">
+        {relationship && (
+          <div className="mb-6 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-3 shadow-sm flex items-center justify-between">
+            <RelationshipNameEditor relationship={relationship} />
+            
+            <button
+              onClick={showInviteModal}
+              className="text-sm px-3 py-1 bg-[var(--primary-light)] text-[var(--primary-dark)] rounded-md hover:bg-[var(--primary-light)/80] transition"
+            >
+              Invite Partner
+            </button>
+          </div>
+        )}
+        
         <MemoryTimeline 
           memories={filteredMemories} 
           isLoading={memoriesLoading} 
