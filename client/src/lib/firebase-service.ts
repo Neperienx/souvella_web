@@ -589,41 +589,8 @@ export async function createMemory(data: {
     const docRef = await addDoc(memoriesCollection, memoryData);
     console.log("Document added successfully with ID:", docRef.id);
     
-    // Create a daily memory record if it doesn't exist
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // relationshipIdString is already defined above
-    
-    // Use a single where clause to avoid needing a composite index
-    const dailyMemoryQuery = query(
-      dailyMemoriesCollection,
-      where("relationshipId", "==", relationshipIdString)
-    );
-    
-    const dailyMemorySnapshot = await getDocs(dailyMemoryQuery);
-    
-    try {
-      if (dailyMemorySnapshot.empty) {
-        // Create a new daily memory
-        await addDoc(dailyMemoriesCollection, {
-          relationshipId: relationshipIdString,
-          memoryIds: [docRef.id],
-          date: serverTimestamp()
-        });
-      } else {
-        // Update existing daily memory
-        const dailyMemoryDoc = dailyMemorySnapshot.docs[0];
-        const dailyMemoryData = dailyMemoryDoc.data() as FirestoreDailyMemory;
-        
-        await updateDoc(dailyMemoryDoc.ref, {
-          memoryIds: [...(dailyMemoryData.memoryIds || []), docRef.id]
-        });
-      }
-    } catch (error) {
-      console.error("Error creating/updating daily memory:", error);
-      // Continue execution even if daily memory creation fails
-    }
+    // Note: We no longer automatically add new memories to the daily memories collection
+    // New memories should only appear in the "Just added" section
     
     // Return the created memory
     return {
