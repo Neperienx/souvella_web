@@ -11,6 +11,8 @@ import {
 } from "../hooks/use-memories";
 import { queryClient } from "@/lib/queryClient";
 import { Memory } from "@/lib/firebase-service";
+import { useQuery } from "@tanstack/react-query";
+import { getRelationshipById } from "@/lib/relationship-service";
 
 import Header from "../components/header";
 import DailyUpload from "../components/daily-upload";
@@ -21,14 +23,36 @@ import InvitePartnerModal from "../components/invite-partner-modal";
 import MemoryCard from "../components/memory-card";
 import { formatDate } from "../lib/utils";
 
-export default function HomePage() {
+interface HomePageProps {
+  params?: {
+    relationshipId?: string;
+  };
+}
+
+export default function HomePage({ params }: HomePageProps) {
   // 1. State hooks
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [selectedRelationshipId, setSelectedRelationshipId] = useState<number | null>(
+    params?.relationshipId ? Number(params.relationshipId) : null
+  );
   
   // 2. Data fetching hooks
   const { user } = useAuth();
   const [_, navigate] = useLocation();
-  const { data: relationship, isLoading: relationshipLoading } = useUserRelationship(user?.uid || null);
+  
+  // Use specified relationship ID when available, otherwise get primary relationship
+  const { data: relationship, isLoading: relationshipLoading } = 
+    selectedRelationshipId 
+      ? useQuery({
+          queryKey: ["relationships/specific", selectedRelationshipId],
+          queryFn: async () => {
+            if (!selectedRelationshipId) return null;
+            const rel = await getRelationshipById(selectedRelationshipId);
+            return rel;
+          },
+          enabled: !!selectedRelationshipId,
+        })
+      : useUserRelationship(user?.uid || null);
   const { data: dailyMemories, isLoading: memoriesLoading } = useDailyMemories(relationship?.id || null);
   const { data: allMemories } = useRelationshipMemories(relationship?.id || null);
   const { data: newMemories } = useNewMemories(relationship?.id || null);
@@ -55,7 +79,11 @@ export default function HomePage() {
   
   // 5. Handler functions
   const handleTimelineClick = () => {
-    navigate("/timeline");
+    if (relationship) {
+      navigate(`/timeline/${relationship.id}`);
+    } else {
+      navigate("/timeline");
+    }
   };
   
   const showInviteModal = () => {
@@ -149,7 +177,8 @@ export default function HomePage() {
       
       <MobileNavigation 
         activePath="home" 
-        onTimelineClick={handleTimelineClick} 
+        onTimelineClick={handleTimelineClick}
+        relationshipId={relationship?.id}
       />
       
       {isInviteModalOpen && (

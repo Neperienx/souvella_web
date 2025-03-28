@@ -6,20 +6,43 @@ import { useRelationshipMemories, useNewMemories, useMarkMemoriesAsViewed } from
 import { useUserNickname } from "@/hooks/use-relationship-settings"; 
 import { Memory } from "@/lib/firebase-service";
 import { queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { getRelationshipById } from "@/lib/relationship-service";
 
 import Header from "../components/header";
 import MemoryTimeline from "../components/memory-timeline";
 import MobileNavigation from "../components/mobile-navigation";
 import InvitePartnerModal from "../components/invite-partner-modal";
 
-export default function TimelinePage() {
+interface TimelinePageProps {
+  params?: {
+    relationshipId?: string;
+  };
+}
+
+export default function TimelinePage({ params }: TimelinePageProps) {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [selectedRelationshipId, setSelectedRelationshipId] = useState<number | null>(
+    params?.relationshipId ? Number(params.relationshipId) : null
+  );
+  
   const { user } = useAuth();
   const [_, navigate] = useLocation();
   
-  // Get user's relationship data
-  const { data: relationship, isLoading: relationshipLoading } = useUserRelationship(user?.uid || null);
+  // Use specified relationship ID when available, otherwise get primary relationship
+  const { data: relationship, isLoading: relationshipLoading } = 
+    selectedRelationshipId 
+      ? useQuery({
+          queryKey: ["relationships/specific", selectedRelationshipId],
+          queryFn: async () => {
+            if (!selectedRelationshipId) return null;
+            const rel = await getRelationshipById(selectedRelationshipId);
+            return rel;
+          },
+          enabled: !!selectedRelationshipId,
+        })
+      : useUserRelationship(user?.uid || null);
   
   // Get all memories for this relationship
   const { data: memories, isLoading: memoriesLoading } = useRelationshipMemories(relationship?.id || null);
@@ -41,9 +64,13 @@ export default function TimelinePage() {
     }
   }, [newMemories, markAsViewed]);
 
-  // Handle navigation
+  // Handle navigation - keep the relationship ID when navigating
   const handleHomeClick = () => {
-    navigate("/");
+    if (relationship) {
+      navigate(`/home/${relationship.id}`);
+    } else {
+      navigate("/");
+    }
   };
 
   // Show invite modal
@@ -104,7 +131,8 @@ export default function TimelinePage() {
       
       <MobileNavigation 
         activePath="timeline" 
-        onHomeClick={handleHomeClick} 
+        onHomeClick={handleHomeClick}
+        relationshipId={relationship?.id}
       />
       
       {isInviteModalOpen && (

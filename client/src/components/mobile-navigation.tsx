@@ -5,12 +5,14 @@ interface MobileNavigationProps {
   activePath: string;
   onTimelineClick?: () => void;
   onHomeClick?: () => void;
+  relationshipId?: number; // Added relationship ID
 }
 
 export default function MobileNavigation({ 
   activePath, 
   onTimelineClick, 
-  onHomeClick 
+  onHomeClick,
+  relationshipId
 }: MobileNavigationProps) {
   const [_, navigate] = useLocation();
 
@@ -20,9 +22,19 @@ export default function MobileNavigation({
     } else if (path === "timeline" && onTimelineClick) {
       onTimelineClick();
     } else if (path === "home") {
-      navigate("/");
+      // Navigate to home with relationship ID if available
+      if (relationshipId) {
+        navigate(`/home/${relationshipId}`);
+      } else {
+        navigate("/");
+      }
     } else if (path === "timeline") {
-      navigate("/timeline");
+      // Navigate to timeline with relationship ID if available
+      if (relationshipId) {
+        navigate(`/timeline/${relationshipId}`);
+      } else {
+        navigate("/timeline");
+      }
     }
   };
 

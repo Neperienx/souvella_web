@@ -3,7 +3,8 @@ import { queryClient } from "@/lib/queryClient";
 import { Relationship } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  getUserPrimaryRelationship, 
+  getUserPrimaryRelationship,
+  getUserRelationships as getRelationships,
   createRelationship, 
   addUserToRelationship,
   getRelationshipByInviteCode
@@ -12,10 +13,22 @@ import {
 // Hook to fetch user's primary relationship
 export function useUserRelationship(uid: string | null) {
   return useQuery<Relationship | null>({
-    queryKey: ["relationships/user", uid],
+    queryKey: ["relationships/user/primary", uid],
     queryFn: async () => {
       if (!uid) return null;
       return await getUserPrimaryRelationship(uid);
+    },
+    enabled: !!uid,
+  });
+}
+
+// Hook to fetch all user's relationships
+export function useUserRelationships(uid: string | null) {
+  return useQuery<Relationship[]>({
+    queryKey: ["relationships/user/all", uid],
+    queryFn: async () => {
+      if (!uid) return [];
+      return await getRelationships(uid);
     },
     enabled: !!uid,
   });
@@ -47,16 +60,9 @@ export function useCreateRelationship() {
     onSuccess: (data, variables) => {
       console.log("Relationship created successfully:", data);
       
-      // Immediately update the relationship query cache with the new data
-      queryClient.setQueryData(["relationships/user", variables], data);
-      
-      // Also invalidate to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["relationships/user", variables] });
-      
-      // Forces a refetch to ensure we have the latest data
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["relationships/user", variables] });
-      }, 300);
+      // Invalidate both the primary relationship and all relationships queries
+      queryClient.invalidateQueries({ queryKey: ["relationships/user/primary", variables] });
+      queryClient.invalidateQueries({ queryKey: ["relationships/user/all", variables] });
       
       toast({
         title: "Relationship Created",
@@ -108,16 +114,9 @@ export function useJoinRelationship() {
     onSuccess: (data, variables) => {
       console.log("Successfully joined relationship:", data);
       
-      // Immediately update the relationship query cache with the new data
-      queryClient.setQueryData(["relationships/user", variables.uid], data);
-      
-      // Also invalidate to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["relationships/user", variables.uid] });
-      
-      // Forces a refetch to ensure we have the latest data
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["relationships/user", variables.uid] });
-      }, 300);
+      // Invalidate both the primary relationship and all relationships queries
+      queryClient.invalidateQueries({ queryKey: ["relationships/user/primary", variables.uid] });
+      queryClient.invalidateQueries({ queryKey: ["relationships/user/all", variables.uid] });
       
       toast({
         title: "Joined Relationship",

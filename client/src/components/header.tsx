@@ -86,7 +86,7 @@ export default function Header({
           <div className="hidden md:flex items-center">
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center space-x-1 text-sm bg-[var(--cream)] py-1 px-3 rounded-full shadow-sm hover:bg-[var(--primary-light)] transition-colors">
-                <span className="font-medium">{relationship ? `${userName}'s Memories` : "No Partner Yet"}</span>
+                <span className="font-medium">{relationship ? `${userName}'s Memories` : <span className="text-[var(--primary-dark)] cursor-pointer" onClick={() => window.location.href = "/dashboard"}>+ Create Relationship</span>}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                   <path d="M10 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM10 8.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM11.5 15.5a1.5 1.5 0 10-3 0 1.5 1.5 0 003 0z" />
                 </svg>
@@ -104,6 +104,10 @@ export default function Header({
                         Share Invite Code
                       </DropdownMenuItem>
                     )}
+                    
+                    <DropdownMenuItem onClick={() => window.location.href = "/dashboard"}>
+                      Manage Relationships
+                    </DropdownMenuItem>
                     
                     <DropdownMenuSeparator />
                   </>
