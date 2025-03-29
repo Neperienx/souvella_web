@@ -9,7 +9,7 @@ import {
   getDailyMemories, 
   getNewMemories,
   createMemory as createFirestoreMemory, 
-  reactToMemory as reactToFirestoreMemory,
+  reactToMemory,
   markMemoriesAsViewed,
   getUserRemainingThumbsUp,
   regenerateDailyMemories,
@@ -188,21 +188,21 @@ export function useUserDailyUploadStatus(userId: string | null, relationshipId: 
   });
 }
 
-// Hook to get user's remaining thumbs up for today
-export function useRemainingThumbsUp(userId: string | null) {
+// Hook to get user's remaining thumbs up for today per relationship
+export function useRemainingThumbsUp(userId: string | null, relationshipId: number | null) {
   return useQuery<number>({
-    queryKey: ["remainingThumbsUp", userId],
+    queryKey: ["remainingThumbsUp", userId, relationshipId],
     queryFn: async () => {
-      if (!userId) return 0;
-      return getUserRemainingThumbsUp(userId);
+      if (!userId || !relationshipId) return 0;
+      return getUserRemainingThumbsUp(userId, relationshipId);
     },
-    enabled: !!userId,
+    enabled: !!userId && !!relationshipId,
     // Refresh every minute to ensure count is current
     refetchInterval: 60 * 1000
   });
 }
 
-// Hook to like a memory with daily limit
+// Hook to like a memory with daily limit per relationship
 export function useReactToMemory() {
   const { toast } = useToast();
   
@@ -216,8 +216,8 @@ export function useReactToMemory() {
       relationshipId: number;
       userId: string;
     }) => {
-      // Use Firestore to react to the memory with the thumbs up limit
-      return reactToFirestoreMemory(memoryId, userId);
+      // Use Firestore to react to the memory with the thumbs up limit per relationship
+      return reactToMemory(memoryId, userId, relationshipId);
     },
     onSuccess: (result, variables) => {
       // Show toast with the result message
@@ -232,8 +232,8 @@ export function useReactToMemory() {
       queryClient.invalidateQueries({ queryKey: ["dailyMemories", variables.relationshipId] });
       queryClient.invalidateQueries({ queryKey: ["newMemories", variables.relationshipId] });
       
-      // Also invalidate remaining thumbs up count
-      queryClient.invalidateQueries({ queryKey: ["remainingThumbsUp", variables.userId] });
+      // Also invalidate remaining thumbs up count for this relationship
+      queryClient.invalidateQueries({ queryKey: ["remainingThumbsUp", variables.userId, variables.relationshipId] });
     },
     onError: (error) => {
       toast({

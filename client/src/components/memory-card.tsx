@@ -16,7 +16,7 @@ export default function MemoryCard({ memory, tapePosition, relationshipId }: Mem
   const [isPlaying, setIsPlaying] = useState(false);
   const { mutate: reactToMemory, isPending } = useReactToMemory();
   const { user } = useAuth();
-  const { data: remainingThumbsUp = 0 } = useRemainingThumbsUp(user?.uid || null);
+  const { data: remainingThumbsUp = 0 } = useRemainingThumbsUp(user?.uid || null, relationshipId);
   
   // Get the author's nickname if available
   const { data: authorNickname } = useUserNickname(memory.userId, relationshipId);

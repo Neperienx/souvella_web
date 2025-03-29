@@ -818,25 +818,27 @@ export async function getUserDailyUploadStatus(userId: string, relationshipId: n
   }
 }
 
-export async function getUserRemainingThumbsUp(userId: string): Promise<number> {
+export async function getUserRemainingThumbsUp(userId: string, relationshipId: number): Promise<number> {
   try {
-    const MAX_DAILY_THUMBS_UP = 2;
+    const MAX_DAILY_THUMBS_UP_PER_RELATIONSHIP = 2;
     const today = formatDateForStorage(new Date());
+    const relationshipIdString = relationshipId.toString();
     
-    // For this case, we need a composite index on userReactionsCollection (userId + date)
+    // We need a composite index on userReactionsCollection (userId + relationshipId + date)
     // This specific query is needed for functionality and can't be simplified further
     // Firebase will show a link to create this index if it doesn't exist
     const q = query(
       userReactionsCollection,
       where("userId", "==", userId),
+      where("relationshipId", "==", relationshipIdString),
       where("date", "==", today)
     );
     
     const querySnapshot = await getDocs(q);
     const usedCount = querySnapshot.size;
     
-    const remaining = Math.max(0, MAX_DAILY_THUMBS_UP - usedCount);
-    console.log(`User ${userId} has used ${usedCount} thumbs up today. Remaining: ${remaining}`);
+    const remaining = Math.max(0, MAX_DAILY_THUMBS_UP_PER_RELATIONSHIP - usedCount);
+    console.log(`User ${userId} has used ${usedCount} thumbs up today for relationship ${relationshipId}. Remaining: ${remaining}`);
     
     return remaining;
   } catch (error) {
@@ -845,16 +847,16 @@ export async function getUserRemainingThumbsUp(userId: string): Promise<number> 
   }
 }
 
-// React to a memory (thumbs up) with daily limit
-export async function reactToMemory(memoryId: string, userId: string): Promise<{ success: boolean, message: string }> {
+// React to a memory (thumbs up) with daily limit per relationship
+export async function reactToMemory(memoryId: string, userId: string, relationshipId: number): Promise<{ success: boolean, message: string }> {
   try {
-    // Check if user has thumbs up remaining today
-    const remainingThumbsUp = await getUserRemainingThumbsUp(userId);
+    // Check if user has thumbs up remaining today for this relationship
+    const remainingThumbsUp = await getUserRemainingThumbsUp(userId, relationshipId);
     
     if (remainingThumbsUp <= 0) {
       return { 
         success: false, 
-        message: "You've used all your thumbs up for today!" 
+        message: "You've used all your thumbs up for this relationship today!" 
       };
     }
     
@@ -872,11 +874,13 @@ export async function reactToMemory(memoryId: string, userId: string): Promise<{
     // Get today's date for the reaction record
     const today = new Date();
     const dateString = formatDateForStorage(today);
+    const relationshipIdString = relationshipId.toString();
     
-    // Create a new reaction document
+    // Create a new reaction document that includes the relationship ID
     await addDoc(userReactionsCollection, {
       userId,
       memoryId,
+      relationshipId: relationshipIdString,
       createdAt: serverTimestamp(),
       date: dateString
     });
@@ -888,7 +892,7 @@ export async function reactToMemory(memoryId: string, userId: string): Promise<{
     
     return { 
       success: true, 
-      message: `Thumbs up added! You have ${remainingThumbsUp - 1} left today.` 
+      message: `Thumbs up added! You have ${remainingThumbsUp - 1} left for this relationship today.` 
     };
   } catch (error) {
     console.error("Error adding thumbs up:", error);
