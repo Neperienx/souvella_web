@@ -132,13 +132,26 @@ export default function HomePage({ params }: HomePageProps) {
         ) : (
           // Show memory content if user has a relationship
           <>
+            {/* Relationship Name Editor - Now first */}
+            <div className="mb-6 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-3 shadow-sm flex items-center justify-between">
+              <RelationshipNameEditor relationship={relationship} />
+              
+              <button
+                onClick={showInviteModal}
+                className="text-sm px-3 py-1 bg-[var(--primary-light)] text-[var(--primary-dark)] rounded-md hover:bg-[var(--primary-light)/80] transition"
+              >
+                Invite Partner
+              </button>
+            </div>
+            
+            {/* Today's Memory Upload - Now second */}
             <DailyUpload 
               userId={user?.uid || ""} 
               relationshipId={relationship?.id} 
               memories={dailyMemories || []}
             />
             
-            {/* New Memories Section */}
+            {/* New Memories Section - Now third */}
             {newMemories && newMemories.length > 0 && (
               <section className="mb-8">
                 <div className="flex items-center justify-between mb-4">
@@ -166,19 +179,7 @@ export default function HomePage({ params }: HomePageProps) {
               </section>
             )}
             
-            {/* Relationship Name Editor */}
-            <div className="mb-6 bg-white/60 backdrop-blur-sm rounded-lg px-4 py-3 shadow-sm flex items-center justify-between">
-              <RelationshipNameEditor relationship={relationship} />
-              
-              <button
-                onClick={showInviteModal}
-                className="text-sm px-3 py-1 bg-[var(--primary-light)] text-[var(--primary-dark)] rounded-md hover:bg-[var(--primary-light)/80] transition"
-              >
-                Invite Partner
-              </button>
-            </div>
-            
-            {/* Daily Memories Section */}
+            {/* Daily Memories Section - Now fourth */}
             <DailyMemories 
               memories={dailyMemories || []} 
               isLoading={memoriesLoading} 
