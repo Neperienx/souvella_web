@@ -53,6 +53,7 @@ export default function DailyMemories({ memories, isLoading, relationshipId }: D
           <h2 className="font-serif text-2xl">Today's Memory Gems</h2>
           <div className="flex items-center">
             <span className="font-script text-xl text-[var(--primary-dark)]">{formatDate(today)}</span>
+            {/* Reroll button hidden as requested but code kept for future use
             <button
               onClick={handleReroll}
               className="ml-4 p-2 bg-[var(--primary-light)] text-[var(--primary-dark)] rounded-full hover:bg-[var(--primary)] hover:text-white transition-colors"
@@ -62,6 +63,7 @@ export default function DailyMemories({ memories, isLoading, relationshipId }: D
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
+            */}
           </div>
         </div>
         
@@ -81,6 +83,7 @@ export default function DailyMemories({ memories, isLoading, relationshipId }: D
         <h2 className="font-serif text-2xl">Today's Memory Gems</h2>
         <div className="flex items-center">
           <span className="font-script text-xl text-[var(--primary-dark)]">{formatDate(today)}</span>
+          {/* Reroll button hidden as requested but code kept for future use
           <button
             onClick={handleReroll}
             className="ml-4 p-2 bg-[var(--primary-light)] text-[var(--primary-dark)] rounded-full hover:bg-[var(--primary)] hover:text-white transition-colors"
@@ -90,6 +93,7 @@ export default function DailyMemories({ memories, isLoading, relationshipId }: D
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
+          */}
         </div>
       </div>
       

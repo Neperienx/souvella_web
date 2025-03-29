@@ -769,14 +769,6 @@ export async function getUserDailyUploadStatus(userId: string, relationshipId: n
   todaysMemory?: Memory;
 }> {
   try {
-    // TEMPORARILY DISABLED FOR DEBUGGING: Always return false to allow unlimited uploads
-    console.log("Daily upload limit temporarily disabled for debugging");
-    return {
-      hasUploaded: false
-    };
-    
-    // Original implementation (commented out):
-    /*
     // Convert relationshipId to string for Firestore consistency
     const relationshipIdString = relationshipId.toString();
     
@@ -809,7 +801,6 @@ export async function getUserDailyUploadStatus(userId: string, relationshipId: n
     return {
       hasUploaded: false
     };
-    */
   } catch (error) {
     console.error("Error checking daily upload status:", error);
     return {
