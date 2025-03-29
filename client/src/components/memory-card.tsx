@@ -34,99 +34,51 @@ export default function MemoryCard({ memory, tapePosition, relationshipId }: Mem
   const renderMemoryContent = () => {
     switch (memory.type) {
       case 'image':
-        // Check if image URL exists
-        if (memory.imageUrl) {
-          return (
-            <div className="polaroid bg-white p-2 border border-gray-100 shadow-lg mb-4 max-w-xs mx-auto rotate-2">
-              <div className="relative">
-                <img 
-                  src={memory.imageUrl} 
-                  alt={memory.caption || "Photo memory"} 
-                  className="w-full h-48 object-cover"
-                  onError={(e) => {
-                    // If image fails to load, replace with error state
-                    e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
-                    e.currentTarget.classList.add("p-10", "opacity-30");
-                    // Show error text
-                    const parent = e.currentTarget.parentElement;
-                    if (parent) {
-                      const errorDiv = document.createElement('div');
-                      errorDiv.className = "absolute inset-0 flex items-center justify-center";
-                      errorDiv.innerHTML = "<p class='text-red-500 text-sm font-medium'>Image unavailable</p>";
-                      parent.appendChild(errorDiv);
-                    }
-                  }}
-                />
-              </div>
-              {memory.caption ? (
-                <p className="font-script text-center mt-2 pt-1 px-2 text-[var(--charcoal)]/90 border-t border-dashed border-gray-200">
-                  {memory.caption}
-                </p>
-              ) : null}
-              <p className="font-script text-center mt-2 text-[var(--charcoal)]/80">
-                {formatDate(new Date(memory.createdAt))}
+        return (
+          <div className="polaroid bg-white p-2 border border-gray-100 shadow-lg mb-4 max-w-xs mx-auto rotate-2">
+            <img 
+              src={memory.imageUrl || memory.content} 
+              alt="Memory" 
+              className="w-full h-48 object-cover"
+            />
+            {memory.caption ? (
+              <p className="font-script text-center mt-2 pt-1 px-2 text-[var(--charcoal)]/90 border-t border-dashed border-gray-200">
+                {memory.caption}
               </p>
-            </div>
-          );
-        } else {
-          // Fallback for images without URLs
-          return (
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-              <div className="flex flex-col items-center space-y-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-center text-[var(--charcoal)]">{memory.content}</p>
-                <p className="text-xs text-gray-500">Image missing - text content shown instead</p>
-              </div>
-            </div>
-          );
-        }
+            ) : null}
+            <p className="font-script text-center mt-2 text-[var(--charcoal)]/80">
+              {formatDate(new Date(memory.createdAt))}
+            </p>
+          </div>
+        );
       
       case 'audio':
-        // Check if audio URL exists
-        if (memory.imageUrl) {
-          return (
-            <div className="mb-4">
-              <AudioPlayer 
-                audioUrl={memory.imageUrl} 
-                caption={memory.caption || memory.content}
-                showFileInfo={true} // Enable file information for audio memories
-              />
+        return memory.imageUrl ? (
+          <div className="mb-4">
+            <AudioPlayer 
+              audioUrl={memory.imageUrl} 
+              caption={memory.caption || memory.content}
+              showFileInfo={true} // Enable file information for audio memories
+            />
+          </div>
+        ) : (
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="bg-[var(--accent)]/30 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+              </svg>
             </div>
-          );
-        } else {
-          // Fallback for audio without URLs
-          return (
-            <div className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200 mb-4">
-              <div className="bg-[var(--accent)]/30 p-3 rounded-full mr-3">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-gray-500">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-[var(--charcoal)]/70">Voice Memory</p>
-                <p className="font-medium">{memory.content}</p>
-                <p className="text-xs text-red-500">Audio file unavailable</p>
-                <button
-                  className="mt-2 text-xs text-blue-500 hover:text-blue-600 underline"
-                  onClick={() => {
-                    // Notify user of the issue
-                    window.alert("This audio recording couldn't be loaded. It may have been removed or corrupted.");
-                  }}
-                >
-                  More Info
-                </button>
-              </div>
+            <div>
+              <p className="text-sm text-[var(--charcoal)]/70">Voice Memory</p>
+              <p className="font-medium">{memory.content}</p>
+              <p className="text-xs text-red-500">Audio file unavailable</p>
             </div>
-          );
-        }
+          </div>
+        );
       
       default: // text
         return (
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <p className="text-[var(--charcoal)] whitespace-pre-wrap">{memory.content}</p>
-          </div>
+          <p className="text-[var(--charcoal)] mb-4">{memory.content}</p>
         );
     }
   };

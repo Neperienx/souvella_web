@@ -101,12 +101,10 @@ export function useCreateMemory() {
         contentLength: memory.content?.length || 0
       });
       
-      // DEBUGGING MODE: Daily upload limit disabled
       // Check if user has already uploaded a memory today for this relationship
-      // Disabled for testing purposes as requested
       const uploadStatus = await getUserDailyUploadStatus(memory.userId, memory.relationshipId);
       
-      if (false && uploadStatus.hasUploaded) { // Adding false condition to disable the check
+      if (uploadStatus.hasUploaded) {
         console.log("MUTATION DEBUG: User has already uploaded a memory today for this relationship");
         throw new Error("You've already shared a memory today. Come back tomorrow!");
       }
@@ -147,45 +145,28 @@ export function useCreateMemory() {
         description: "Your memory has been saved successfully!",
       });
     },
-    onError: (error, variables) => {
+    onError: (error) => {
       console.error("MUTATION DEBUG: Mutation error callback triggered", error);
       
-      let errorMessage = "We could not reach the server at this time, please try again";
-      let errorTitle = "Error Creating Memory";
-      let retryEnabled = true;
-      
+      let errorMessage = "Failed to create memory";
       if (error instanceof Error) {
-        // Check for specific error types to provide better error messages
-        if (error.message.includes("storage") || error.message.includes("upload") || error.message.includes("timeout")) {
-          errorMessage = "Failed to upload file. Please try a smaller file or check your internet connection and try again.";
-          errorTitle = "Upload Error";
-        } else if (error.message.includes("permission") || error.message.includes("unauthorized")) {
+        errorMessage = error.message;
+        
+        // Check for specific error types
+        if (errorMessage.includes("storage") || errorMessage.includes("upload")) {
+          errorMessage = "Failed to upload image. Please try a different image or try again later.";
+        } else if (errorMessage.includes("permission") || errorMessage.includes("unauthorized")) {
           errorMessage = "You don't have permission to create memories in this relationship.";
-          errorTitle = "Permission Error";
-          retryEnabled = false;
-        } else if (error.message.includes("network") || error.message.includes("connection")) {
+        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
           errorMessage = "Network error. Please check your internet connection and try again.";
-          errorTitle = "Network Error";
-        } else if (error.message.includes("quota") || error.message.includes("size")) {
-          errorMessage = "The file is too large. Please choose a smaller file (under 5MB).";
-          errorTitle = "File Size Error";
-        } else if (error.message.includes("format") || error.message.includes("type")) {
-          errorMessage = "Unsupported file format. Please use a common image or audio format.";
-          errorTitle = "Format Error";
         }
       }
       
       toast({
-        title: errorTitle,
+        title: "Error Creating Memory",
         description: errorMessage,
         variant: "destructive",
       });
-      
-      // If upload fails but we think it's retriable, don't mark as uploaded
-      if (retryEnabled && variables.file) {
-        // Invalidate daily upload status to allow retry
-        queryClient.invalidateQueries({ queryKey: ["dailyUploadStatus", variables.userId, variables.relationshipId] });
-      }
     },
   });
 }
