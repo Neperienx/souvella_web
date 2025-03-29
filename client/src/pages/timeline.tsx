@@ -147,6 +147,8 @@ export default function TimelinePage({ params }: TimelinePageProps) {
         activePath="timeline" 
         onHomeClick={handleHomeClick}
         relationshipId={relationship?.id}
+        onShowInvite={showInviteModal}
+        userName={userNickname || user?.displayName || "User"}
       />
       
       {isInviteModalOpen && (

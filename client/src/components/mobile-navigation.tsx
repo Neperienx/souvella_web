@@ -1,20 +1,34 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { logOut } from "../lib/firebase";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface MobileNavigationProps {
   activePath: string;
   onTimelineClick?: () => void;
   onHomeClick?: () => void;
   relationshipId?: number; // Added relationship ID
+  onShowInvite?: () => void; // Add invite modal trigger
+  userName?: string; // User display name
 }
 
 export default function MobileNavigation({ 
   activePath, 
   onTimelineClick, 
   onHomeClick,
-  relationshipId
+  relationshipId,
+  onShowInvite,
+  userName = "User"
 }: MobileNavigationProps) {
   const [_, navigate] = useLocation();
+  const { toast } = useToast();
 
   const handleNavigation = (path: string) => {
     if (path === "home" && onHomeClick) {
@@ -35,6 +49,25 @@ export default function MobileNavigation({
       } else {
         navigate("/timeline");
       }
+    } else if (path === "dashboard") {
+      navigate("/dashboard");
+    }
+  };
+  
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      navigate("/");
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
     }
   };
 
@@ -63,8 +96,10 @@ export default function MobileNavigation({
         
         <div className="flex flex-col items-center p-1">
           <button 
-            onClick={() => handleNavigation("home")}
+            onClick={onShowInvite}
             className="w-12 h-12 bg-[var(--primary)] rounded-full flex items-center justify-center shadow-md"
+            aria-label="Share invite code or create relationship"
+            title="Share invite code or create relationship"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-white">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -72,19 +107,54 @@ export default function MobileNavigation({
           </button>
         </div>
         
-        <button className="flex flex-col items-center p-2 text-[var(--charcoal)]/60">
+        <button 
+          onClick={() => handleNavigation("dashboard")} 
+          className={`flex flex-col items-center p-2 text-[var(--charcoal)]/60`}
+          aria-label="Go to dashboard"
+          title="Go to dashboard"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
           </svg>
-          <span className="text-xs mt-1">Favorites</span>
+          <span className="text-xs mt-1">Dashboard</span>
         </button>
         
-        <button className="flex flex-col items-center p-2 text-[var(--charcoal)]/60">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-          </svg>
-          <span className="text-xs mt-1">Profile</span>
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex flex-col items-center p-2 text-[var(--charcoal)]/60 focus:outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+            <span className="text-xs mt-1">Profile</span>
+          </DropdownMenuTrigger>
+          
+          <DropdownMenuContent className="min-w-[200px]">
+            <DropdownMenuItem className="cursor-default font-medium text-[var(--primary)]">
+              {userName}'s Memories
+            </DropdownMenuItem>
+            
+            <DropdownMenuSeparator />
+            
+            {relationshipId && (
+              <>
+                {onShowInvite && (
+                  <DropdownMenuItem onClick={onShowInvite}>
+                    Share Invite Code
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuItem onClick={() => handleNavigation("dashboard")}>
+                  Manage Relationships
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+              </>
+            )}
+            
+            <DropdownMenuItem onClick={handleLogout}>
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </nav>
   );

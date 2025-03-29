@@ -192,6 +192,8 @@ export default function HomePage({ params }: HomePageProps) {
         activePath="home" 
         onTimelineClick={handleTimelineClick}
         relationshipId={relationship?.id}
+        onShowInvite={showInviteModal}
+        userName={userNickname || user?.displayName || "User"}
       />
       
       {isInviteModalOpen && (
