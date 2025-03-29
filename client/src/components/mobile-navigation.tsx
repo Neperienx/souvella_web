@@ -32,12 +32,8 @@ export default function MobileNavigation({
     if (path === "home" && onHomeClick) {
       onHomeClick();
     } else if (path === "home") {
-      // Navigate to home with relationship ID if available
-      if (relationshipId) {
-        navigate(`/home/${relationshipId}`);
-      } else {
-        navigate("/");
-      }
+      // Always go to dashboard when Home is clicked
+      navigate("/dashboard");
     } else if (path === "dashboard") {
       navigate("/dashboard");
     }

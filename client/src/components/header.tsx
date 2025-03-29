@@ -5,6 +5,7 @@ import { Relationship } from "@shared/schema";
 import { useMarkMemoriesAsViewed } from "@/hooks/use-memories";
 import { queryClient } from "@/lib/queryClient";
 import UserSettingsModal from "./user-settings-modal";
+import SouvellaLogo from "../components/logo";
 import { useLocation } from "wouter";
 import {
   DropdownMenu,
@@ -80,9 +81,7 @@ export default function Header({
     <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-40">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="w-10 h-10 bg-[var(--primary)] rounded-full flex items-center justify-center">
-            <span className="font-script text-xl text-white">S</span>
-          </div>
+          <SouvellaLogo size={40} />
           <h1 className="font-serif text-xl md:text-2xl hidden sm:block">Souvella</h1>
         </div>
         

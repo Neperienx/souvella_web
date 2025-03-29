@@ -1,5 +1,5 @@
 import AuthForm from "../components/auth-form";
-import logo from "../assets/souvella-logo.svg";
+import SouvellaLogo from "../components/logo";
 
 export default function AuthPage() {
   return (
@@ -12,11 +12,7 @@ export default function AuthPage() {
         <p className="font-script text-2xl text-center text-[var(--primary-dark)] mb-8">Where memories come to life</p>
         
         <div className="flex justify-center mb-8">
-          <img 
-            src={logo} 
-            alt="Souvella logo" 
-            className="w-40 h-40 object-contain float-animation"
-          />
+          <SouvellaLogo size={120} className="float-animation" />
         </div>
         
         <AuthForm />
