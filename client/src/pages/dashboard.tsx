@@ -194,7 +194,9 @@ export default function Dashboard() {
                 className="bg-white/80 backdrop-blur-md shadow-sm hover:shadow-md transition-shadow"
               >
                 <CardHeader>
-                  <CardTitle>Relationship #{relationship.id}</CardTitle>
+                  <CardTitle>
+                    {relationship.name ? relationship.name : `Relationship #${relationship.id}`}
+                  </CardTitle>
                   <CardDescription>
                     Created on {new Date(relationship.createdAt).toLocaleDateString()}
                   </CardDescription>
