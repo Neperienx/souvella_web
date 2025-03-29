@@ -530,6 +530,62 @@ export async function getNewMemories(relationshipId: number): Promise<Memory[]> 
   }
 }
 
+// Find and clean up faulty memory entries (those with missing URLs)
+export async function cleanupFaultyMemories(): Promise<number> {
+  try {
+    console.log("Starting cleanup of faulty memory entries...");
+    const batch = writeBatch(firestore);
+    let deletedCount = 0;
+    
+    // First query for image memories without imageUrl
+    const imageMemoriesQuery = query(
+      memoriesCollection,
+      where("type", "==", "image")
+    );
+    
+    const imageMemoriesSnapshot = await getDocs(imageMemoriesQuery);
+    for (const doc of imageMemoriesSnapshot.docs) {
+      const data = doc.data() as FirestoreMemory;
+      // If it's an image memory but has no imageUrl, it's faulty
+      if (!data.imageUrl || data.imageUrl.trim() === '') {
+        console.log(`Found faulty image memory ${doc.id} without URL`);
+        batch.delete(doc.ref);
+        deletedCount++;
+      }
+    }
+    
+    // Then query for audio memories without imageUrl (which stores the audio URL)
+    const audioMemoriesQuery = query(
+      memoriesCollection,
+      where("type", "==", "audio")
+    );
+    
+    const audioMemoriesSnapshot = await getDocs(audioMemoriesQuery);
+    for (const doc of audioMemoriesSnapshot.docs) {
+      const data = doc.data() as FirestoreMemory;
+      // If it's an audio memory but has no imageUrl, it's faulty
+      if (!data.imageUrl || data.imageUrl.trim() === '') {
+        console.log(`Found faulty audio memory ${doc.id} without URL`);
+        batch.delete(doc.ref);
+        deletedCount++;
+      }
+    }
+    
+    // Execute the batch if there are items to delete
+    if (deletedCount > 0) {
+      await batch.commit();
+      console.log(`Cleaned up ${deletedCount} faulty memory entries`);
+    } else {
+      console.log("No faulty memory entries found");
+    }
+    
+    return deletedCount;
+  } catch (error) {
+    console.error("Error cleaning up faulty memories:", error);
+    return 0;
+  }
+}
+
 // Create a new memory
 export async function createMemory(data: {
   userId: string;
@@ -619,6 +675,11 @@ export async function createMemory(data: {
           
           imageUrl = await Promise.race([downloadUrlPromise, downloadTimeoutPromise]) as string;
           console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl ? imageUrl.substring(0, 50) + "..." : "No URL received");
+          
+          // Validate the URL - if we don't have a valid URL for image/audio, throw an error
+          if (!imageUrl || imageUrl.trim() === '') {
+            throw new Error(`Failed to get a valid URL for the ${data.type} file`);
+          }
         } catch (storageError) {
           console.error("UPLOAD DEBUG: Storage operation error:", storageError);
           if (storageError instanceof Error) {
@@ -639,9 +700,11 @@ export async function createMemory(data: {
           console.error("UPLOAD DEBUG ERROR: Error message:", uploadError.message);
           console.error("UPLOAD DEBUG ERROR: Error stack:", uploadError.stack);
         }
-        // If file upload fails, we'll continue with text-only memory
-        console.log("UPLOAD DEBUG: Continuing with text-only memory");
-        finalMemoryType = "text"; // Force to text if image upload fails
+        
+        // Instead of continuing with a text memory, throw an error to prevent creating an invalid memory
+        // This will make sure the user doesn't lose their daily upload quota
+        console.error("UPLOAD DEBUG: Cannot create memory without valid file URL");
+        throw new Error(`Failed to upload ${data.type} file. Please try again.`);
       }
     }
       

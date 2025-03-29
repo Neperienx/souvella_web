@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "./hooks/use-auth";
+import { useCleanupFaultyMemories } from "./hooks/use-memories";
 
 import AuthPage from "./pages/auth";
 import HomePage from "./pages/home";
@@ -37,9 +38,20 @@ function Router() {
   );
 }
 
+// Memory Cleanup component that runs independently in the app background
+function MemoryCleanup() {
+  // This hook sets up a cleanup task that runs immediately on mount
+  // and then periodically to remove any faulty memory entries
+  useCleanupFaultyMemories();
+  
+  // This component doesn't render anything
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <MemoryCleanup />
       <Router />
       <Toaster />
     </QueryClientProvider>

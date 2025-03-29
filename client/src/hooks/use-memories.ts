@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +13,8 @@ import {
   markMemoriesAsViewed,
   getUserRemainingThumbsUp,
   regenerateDailyMemories,
-  getUserDailyUploadStatus
+  getUserDailyUploadStatus,
+  cleanupFaultyMemories
 } from "@/lib/firebase-service";
 
 // Hook to fetch all memories for a relationship
@@ -241,6 +243,54 @@ export function useReactToMemory() {
       });
     }
   });
+}
+
+// Hook to clean up faulty memories
+export function useCleanupFaultyMemories() {
+  const { toast } = useToast();
+  
+  // Create a mutation to clean up faulty memories
+  const cleanupMutation = useMutation({
+    mutationFn: async () => {
+      console.log("Running faulty memory cleanup...");
+      return cleanupFaultyMemories();
+    },
+    onSuccess: (deletedCount) => {
+      if (deletedCount > 0) {
+        toast({
+          title: "Memory Cleanup",
+          description: `Fixed ${deletedCount} memory entries with missing data`,
+        });
+        
+        // Invalidate all memory-related queries to refresh the UI
+        queryClient.invalidateQueries({ queryKey: ["memories"] });
+        queryClient.invalidateQueries({ queryKey: ["dailyMemories"] });
+        queryClient.invalidateQueries({ queryKey: ["newMemories"] });
+      }
+    },
+    onError: (error) => {
+      console.error("Error during memory cleanup:", error);
+    }
+  });
+
+  // Run the cleanup periodically and on component mount
+  useEffect(() => {
+    // Run immediately on first mount
+    cleanupMutation.mutate();
+    
+    // Then set up a periodic cleanup every 5 minutes
+    const interval = setInterval(() => {
+      cleanupMutation.mutate();
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    // Clean up the interval when component unmounts
+    return () => clearInterval(interval);
+  }, []);
+  
+  return {
+    ...cleanupMutation,
+    runCleanup: () => cleanupMutation.mutate() // Expose a function to manually trigger cleanup
+  };
 }
 
 // Hook to reroll daily memories
