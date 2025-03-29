@@ -599,25 +599,32 @@ export async function createMemory(data: {
           const storageRef = ref(storage, filePath);
           console.log("UPLOAD DEBUG: Storage reference created successfully", storageRef);
           
-          // Set up a timeout promise for upload operation
+          // Set up a timeout promise for upload operation with longer timeout
           const uploadPromise = uploadBytes(storageRef, fileToUpload);
           const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("Upload timed out after 15 seconds")), 15000);
+            setTimeout(() => reject(new Error("Upload timed out after 30 seconds")), 30000);
           });
           
-          console.log("UPLOAD DEBUG: Beginning uploadBytes operation (with 15-second timeout)");
+          console.log("UPLOAD DEBUG: Beginning uploadBytes operation (with 30-second timeout)");
           // Race the upload against the timeout
           const snapshot = await Promise.race([uploadPromise, timeoutPromise]) as any;
           console.log("UPLOAD DEBUG: Upload completed successfully, details:", snapshot);
           
           console.log("UPLOAD DEBUG: Getting download URL");
-          // Add a timeout to the getDownloadURL operation too
+          // Add a timeout to the getDownloadURL operation with longer timeout
           const downloadUrlPromise = getDownloadURL(snapshot.ref);
           const downloadTimeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("Get download URL timed out after 10 seconds")), 10000);
+            setTimeout(() => reject(new Error("Get download URL timed out after 20 seconds")), 20000);
           });
           
-          imageUrl = await Promise.race([downloadUrlPromise, downloadTimeoutPromise]) as string;
+          try {
+            imageUrl = await Promise.race([downloadUrlPromise, downloadTimeoutPromise]) as string;
+            console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl ? imageUrl.substring(0, 50) + "..." : "No URL received");
+          } catch (downloadError) {
+            console.error("UPLOAD DEBUG: Download URL failed:", downloadError);
+            // Try again with a longer timeout - some images take longer to process
+            imageUrl = await getDownloadURL(snapshot.ref);
+          }
           console.log("UPLOAD DEBUG: Download URL obtained:", imageUrl ? imageUrl.substring(0, 50) + "..." : "No URL received");
         } catch (storageError) {
           console.error("UPLOAD DEBUG: Storage operation error:", storageError);

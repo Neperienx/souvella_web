@@ -101,10 +101,12 @@ export function useCreateMemory() {
         contentLength: memory.content?.length || 0
       });
       
+      // DEBUGGING MODE: Daily upload limit disabled
       // Check if user has already uploaded a memory today for this relationship
+      // Disabled for testing purposes as requested
       const uploadStatus = await getUserDailyUploadStatus(memory.userId, memory.relationshipId);
       
-      if (uploadStatus.hasUploaded) {
+      if (false && uploadStatus.hasUploaded) { // Adding false condition to disable the check
         console.log("MUTATION DEBUG: User has already uploaded a memory today for this relationship");
         throw new Error("You've already shared a memory today. Come back tomorrow!");
       }
