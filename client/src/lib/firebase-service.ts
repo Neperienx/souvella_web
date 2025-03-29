@@ -145,10 +145,10 @@ export async function getDailyMemories(relationshipId: number): Promise<Memory[]
     
     const querySnapshot = await getDocs(q);
     
-    // If no daily memories exist for today, try to generate some
+    // If no daily memories exist at all, create some
     if (querySnapshot.empty) {
-      console.log(`No daily memories found for relationship ${relationshipId}. Will attempt to select random memories.`);
-      const randomMemories = await selectRandomMemoriesForDay(relationshipId, 3);
+      console.log(`No daily memories found for relationship ${relationshipId}. Will generate random memories.`);
+      const randomMemories = await selectRandomMemoriesForDay(relationshipId, 4); // Change to 4 memories
       console.log(`Generated ${randomMemories.length} random memories for daily view.`);
       
       // Create a daily memory document with the random memories
@@ -172,6 +172,20 @@ export async function getDailyMemories(relationshipId: number): Promise<Memory[]
       memoryCount: dailyMemory.memoryIds ? dailyMemory.memoryIds.length : 0
     });
     
+    // Check if the memories were selected today - if not, select new ones (automatic daily refresh)
+    if (dailyMemory.date) {
+      const memoryDate = dailyMemory.date.toDate();
+      memoryDate.setHours(0, 0, 0, 0); // Set to midnight for comparison
+      
+      // If memory date is before today, select new memories
+      if (memoryDate.getTime() < today.getTime()) {
+        console.log(`Daily memories are from ${memoryDate.toISOString()}, which is before today (${today.toISOString()}). Generating new memories.`);
+        const randomMemories = await regenerateDailyMemories(relationshipId, 4); // Change to 4 memories
+        console.log(`Generated ${randomMemories.length} new random memories for daily view.`);
+        return randomMemories;
+      }
+    }
+    
     // If there are no memory IDs, return an empty array
     if (!dailyMemory.memoryIds || dailyMemory.memoryIds.length === 0) {
       console.log(`No memory IDs found in daily memory document.`);
@@ -194,6 +208,7 @@ export async function getDailyMemories(relationshipId: number): Promise<Memory[]
     }
     
     console.log(`Retrieved ${memories.length}/${dailyMemory.memoryIds.length} memories for daily view`);
+    console.log(`Successfully retrieved ${memories.length} daily memories:`, memories.map(m => ({id: m.id, type: m.type, thumbsUp: m.thumbsUpCount})));
     
     return memories;
   } catch (error) {
@@ -203,7 +218,7 @@ export async function getDailyMemories(relationshipId: number): Promise<Memory[]
 }
 
 // Regenerate daily memories (for reroll feature)
-export async function regenerateDailyMemories(relationshipId: number, count: number = 3): Promise<Memory[]> {
+export async function regenerateDailyMemories(relationshipId: number, count: number = 4): Promise<Memory[]> {
   try {
     // Convert relationshipId to string for Firestore consistency
     const relationshipIdString = relationshipId.toString();
@@ -812,7 +827,7 @@ export async function markMemoriesAsViewed(relationshipId: number): Promise<void
 }
 
 // Select random memories for the daily view with weighted probabilities based on thumbs up
-export async function selectRandomMemoriesForDay(relationshipId: number, count: number = 3): Promise<Memory[]> {
+export async function selectRandomMemoriesForDay(relationshipId: number, count: number = 4): Promise<Memory[]> {
   try {
     // Convert relationshipId to string for consistency
     const relationshipIdString = relationshipId.toString();
