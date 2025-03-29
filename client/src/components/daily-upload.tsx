@@ -247,15 +247,17 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
     
     console.log("SUBMIT DEBUG: Using relationship ID:", relationshipId);
     
+    // TEMPORARILY DISABLED FOR DEBUGGING
     // Check if the user has already uploaded today
-    if (dailyUploadStatus?.hasUploaded) {
-      toast({
-        title: "Already uploaded today",
-        description: "You've already shared a memory today. Come back tomorrow!",
-        variant: "destructive",
-      });
-      return;
-    }
+    // if (dailyUploadStatus?.hasUploaded) {
+    //   toast({
+    //     title: "Already uploaded today",
+    //     description: "You've already shared a memory today. Come back tomorrow!",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+    console.log("Upload limit temporarily disabled for debugging");
     
     // Get user ID from Firebase
     const firebaseUid = auth.currentUser?.uid;
@@ -332,22 +334,22 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
         ) : (
           <>
             <h2 className="font-serif text-2xl mb-4 text-center">Today's Memory</h2>
-            {dailyUploadStatus?.hasUploaded ? (
-              <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
-                You've already shared a memory today. Come back tomorrow!
-                {dailyUploadStatus.todaysMemory && (
-                  <span className="block mt-2 text-base font-medium">Today's memory: "{dailyUploadStatus.todaysMemory.content}"</span>
-                )}
-              </p>
-            ) : (
-              <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
-                What's your special moment today?
+            {/* TEMPORARILY DISABLED FOR DEBUGGING - Always show upload prompt */}
+            <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
+              What's your special moment today?
+            </p>
+            {/* Show last upload info if available */}
+            {dailyUploadStatus?.hasUploaded && dailyUploadStatus.todaysMemory && (
+              <p className="text-sm text-center mb-5 text-[var(--charcoal)]/70 bg-yellow-50 p-2 rounded">
+                <span className="font-bold">NOTE:</span> Daily limit temporarily disabled for debugging.
+                <span className="block mt-1">Previous upload today: "{dailyUploadStatus.todaysMemory.content}"</span>
               </p>
             )}
           </>
         )}
         
-        {dailyUploadStatus?.hasUploaded ? (
+        {/* TEMPORARILY SHOW FORM REGARDLESS OF UPLOAD STATUS */}
+        {false ? (
           // If the user has already uploaded today, show a simple card instead of the form
           <div className="flex flex-col items-center justify-center mt-4">
             <div className="bg-white/80 rounded-lg p-4 w-full max-w-xs shadow-sm border border-[var(--primary)]/10">
