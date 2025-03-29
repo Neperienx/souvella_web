@@ -334,22 +334,21 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
         ) : (
           <>
             <h2 className="font-serif text-2xl mb-4 text-center">Today's Memory</h2>
-            {/* TEMPORARILY DISABLED FOR DEBUGGING - Always show upload prompt */}
-            <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
-              What's your special moment today?
-            </p>
-            {/* Show last upload info if available */}
+            {!dailyUploadStatus?.hasUploaded && (
+              <p className="font-script text-xl text-center mb-6 text-[var(--charcoal)]/80">
+                What's your special moment today?
+              </p>
+            )}
             {dailyUploadStatus?.hasUploaded && dailyUploadStatus.todaysMemory && (
-              <p className="text-sm text-center mb-5 text-[var(--charcoal)]/70 bg-yellow-50 p-2 rounded">
-                <span className="font-bold">NOTE:</span> Daily limit temporarily disabled for debugging.
-                <span className="block mt-1">Previous upload today: "{dailyUploadStatus.todaysMemory.content}"</span>
+              <p className="text-sm text-center mb-5 text-[var(--charcoal)]/70">
+                <span className="font-medium">Today's shared memory:</span> "{dailyUploadStatus.todaysMemory.content}"
               </p>
             )}
           </>
         )}
         
-        {/* TEMPORARILY SHOW FORM REGARDLESS OF UPLOAD STATUS */}
-        {false ? (
+        {/* Show confirmation card if user already uploaded, or the form if not */}
+        {dailyUploadStatus?.hasUploaded ? (
           // If the user has already uploaded today, show a simple card instead of the form
           <div className="flex flex-col items-center justify-center mt-4">
             <div className="bg-white/80 rounded-lg p-4 w-full max-w-xs shadow-sm border border-[var(--primary)]/10">
