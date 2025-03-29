@@ -1,5 +1,5 @@
-import { useState } from "react";
 import AuthForm from "../components/auth-form";
+import logo from "../assets/souvella-logo.svg";
 
 export default function AuthPage() {
   return (
@@ -9,13 +9,13 @@ export default function AuthPage() {
         <div className="tape w-24 -right-5 top-12 -rotate-12"></div>
         
         <h1 className="font-serif text-4xl text-center mb-2">Souvella</h1>
-        <p className="font-script text-2xl text-center text-[var(--primary-dark)] mb-8">Where love stories live</p>
+        <p className="font-script text-2xl text-center text-[var(--primary-dark)] mb-8">Where memories come to life</p>
         
         <div className="flex justify-center mb-8">
           <img 
-            src="https://images.unsplash.com/photo-1518199266791-5375a83190b7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&q=80" 
-            alt="Love memories illustration" 
-            className="w-40 h-40 object-cover rounded-full border-4 border-white shadow-md float-animation"
+            src={logo} 
+            alt="Souvella logo" 
+            className="w-40 h-40 object-contain float-animation"
           />
         </div>
         
