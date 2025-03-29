@@ -82,48 +82,108 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     
-    if (selectedFile) {
+    if (!selectedFile) {
+      return;
+    }
+    
+    // Reset form errors
+    form.clearErrors();
+    
+    try {
       // Determine the memory type from file
       const detectedType = getMemoryTypeFromFile(selectedFile);
       
       if (!detectedType) {
         toast({
           title: "Invalid File Type",
-          description: "Please select an image or audio file.",
+          description: "Please select an image or audio file (jpeg, png, gif, webp, mp3, wav, ogg formats).",
           variant: "destructive",
         });
+        
+        // Reset the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
         return;
       }
       
       // Set the memory type based on the file
       setMemoryType(detectedType);
       
-      // Process file if needed
-      let processedFile = selectedFile;
-      
-      try {
-        if (detectedType === "image") {
-          processedFile = await compressImage(selectedFile);
-        } else if (detectedType === "audio") {
-          processedFile = await processAudio(selectedFile);
-        }
-        
-        // Set the file state 
-        setFile(processedFile);
-        
-        // Create object URL for preview
-        const url = URL.createObjectURL(processedFile);
-        setPreviewUrl(url);
-        
-        // Add cleanup to release object URL later
-        return () => URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error("Error processing file:", error);
+      // Show processing toast for larger files
+      let isLargeFile = selectedFile.size > 1 * 1024 * 1024; // 1MB
+      if (isLargeFile) { 
         toast({
-          title: "File Processing Error",
-          description: "There was a problem processing your file. Please try again.",
-          variant: "destructive",
+          title: "Processing File",
+          description: `Optimizing your ${detectedType === "image" ? "image" : "audio"} for upload...`,
+          duration: 30000, // Long duration in case processing takes time
         });
+      }
+      
+      // Process file if needed
+      let processedFile: File;
+      
+      if (detectedType === "image") {
+        processedFile = await compressImage(selectedFile);
+      } else { // detectedType === "audio"
+        processedFile = await processAudio(selectedFile);
+      }
+      
+      // Set the file state 
+      setFile(processedFile);
+      
+      // Create a preview URL for the file
+      const url = URL.createObjectURL(processedFile);
+      setPreviewUrl(url);
+      
+      // For large files, show success toast
+      if (isLargeFile) {
+        // Create new toast notification
+        toast({
+          title: "File Ready",
+          description: `Your ${detectedType === "image" ? "image" : "audio"} has been processed successfully.`,
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error processing file:", error);
+      
+      // Provide more specific error message based on error type
+      let errorMessage = "There was an error processing your file. Please try another one.";
+      let errorTitle = "File Processing Error";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("size")) {
+          errorTitle = "File Too Large";
+          errorMessage = error.message;
+        } else if (error.message.includes("format")) {
+          errorTitle = "Unsupported Format";
+          errorMessage = error.message;
+        } else if (error.message.includes("timeout")) {
+          errorTitle = "Processing Timeout";
+          errorMessage = "The file is taking too long to process. Please try a smaller file.";
+        } else {
+          // Use the actual error message if it's available
+          errorMessage = error.message;
+        }
+      }
+      
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      
+      // Reset file state if there was an error
+      setFile(null);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
       }
     }
   };
@@ -138,11 +198,21 @@ export default function DailyUpload({ userId, relationshipId, memories }: DailyU
   
   // Trigger audio recording or upload
   const handleAddVoice = () => {
-    if (navigator.mediaDevices?.getUserMedia) {
-      // Show the audio recorder component
-      setShowRecorder(true);
-    } else {
-      // Fallback to regular file upload for audio
+    try {
+      // Check if mediaDevices API is available
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+        // Show the audio recorder component
+        setShowRecorder(true);
+      } else {
+        // Fallback to regular file upload for audio
+        if (fileInputRef.current) {
+          fileInputRef.current.accept = "audio/*";
+          fileInputRef.current.click();
+        }
+      }
+    } catch (error) {
+      console.error("Error in handleAddVoice:", error);
+      // Fallback to regular file upload
       if (fileInputRef.current) {
         fileInputRef.current.accept = "audio/*";
         fileInputRef.current.click();

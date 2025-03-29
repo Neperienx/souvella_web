@@ -147,28 +147,45 @@ export function useCreateMemory() {
         description: "Your memory has been saved successfully!",
       });
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       console.error("MUTATION DEBUG: Mutation error callback triggered", error);
       
-      let errorMessage = "Failed to create memory";
+      let errorMessage = "We could not reach the server at this time, please try again";
+      let errorTitle = "Error Creating Memory";
+      let retryEnabled = true;
+      
       if (error instanceof Error) {
-        errorMessage = error.message;
-        
-        // Check for specific error types
-        if (errorMessage.includes("storage") || errorMessage.includes("upload")) {
-          errorMessage = "Failed to upload image. Please try a different image or try again later.";
-        } else if (errorMessage.includes("permission") || errorMessage.includes("unauthorized")) {
+        // Check for specific error types to provide better error messages
+        if (error.message.includes("storage") || error.message.includes("upload") || error.message.includes("timeout")) {
+          errorMessage = "Failed to upload file. Please try a smaller file or check your internet connection and try again.";
+          errorTitle = "Upload Error";
+        } else if (error.message.includes("permission") || error.message.includes("unauthorized")) {
           errorMessage = "You don't have permission to create memories in this relationship.";
-        } else if (errorMessage.includes("network") || errorMessage.includes("connection")) {
+          errorTitle = "Permission Error";
+          retryEnabled = false;
+        } else if (error.message.includes("network") || error.message.includes("connection")) {
           errorMessage = "Network error. Please check your internet connection and try again.";
+          errorTitle = "Network Error";
+        } else if (error.message.includes("quota") || error.message.includes("size")) {
+          errorMessage = "The file is too large. Please choose a smaller file (under 5MB).";
+          errorTitle = "File Size Error";
+        } else if (error.message.includes("format") || error.message.includes("type")) {
+          errorMessage = "Unsupported file format. Please use a common image or audio format.";
+          errorTitle = "Format Error";
         }
       }
       
       toast({
-        title: "Error Creating Memory",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive",
       });
+      
+      // If upload fails but we think it's retriable, don't mark as uploaded
+      if (retryEnabled && variables.file) {
+        // Invalidate daily upload status to allow retry
+        queryClient.invalidateQueries({ queryKey: ["dailyUploadStatus", variables.userId, variables.relationshipId] });
+      }
     },
   });
 }

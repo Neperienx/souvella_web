@@ -20,12 +20,37 @@ export async function compressImage(imageFile: File): Promise<File> {
   console.log("IMAGE COMPRESSION: Original size:", Math.round(imageFile.size / 1024), "KB");
   console.log("IMAGE COMPRESSION: Original type:", imageFile.type);
 
+  // Validate input file
+  if (!imageFile || !(imageFile instanceof File)) {
+    console.error('Invalid file provided to compressImage');
+    throw new Error('Invalid image file');
+  }
+  
+  if (!imageFile.type.startsWith('image/')) {
+    console.error('File is not an image:', imageFile.type);
+    throw new Error('File format error: Please upload an image file');
+  }
+  
+  // Check file size limit (10MB)
+  if (imageFile.size > 10 * 1024 * 1024) {
+    console.error('Image too large:', Math.round(imageFile.size / (1024 * 1024)), 'MB');
+    throw new Error('File size error: Maximum image size is 10MB');
+  }
+
   try {
-    // Handle iPhone HEIC/HEIF format if needed (requires conversion)
-    // Note: browser-image-compression should handle this internally
+    // Create a timeout promise to handle hanging compression
+    const compressionPromise = imageCompression(imageFile, {
+      ...imageCompressionOptions,
+      alwaysKeepResolution: true, // Preserve image quality
+    });
     
-    // Compress the image
-    const compressedFile = await imageCompression(imageFile, imageCompressionOptions);
+    // Create a timeout promise
+    const timeoutPromise = new Promise<File>((_, reject) => {
+      setTimeout(() => reject(new Error('Image compression timed out after 30 seconds')), 30000);
+    });
+    
+    // Race the compression against the timeout
+    const compressedFile = await Promise.race([compressionPromise, timeoutPromise]);
     
     console.log("IMAGE COMPRESSION: Compressed size:", Math.round(compressedFile.size / 1024), "KB");
     console.log("IMAGE COMPRESSION: Compressed type:", compressedFile.type);
@@ -35,8 +60,19 @@ export async function compressImage(imageFile: File): Promise<File> {
     return compressedFile;
   } catch (error) {
     console.error("IMAGE COMPRESSION: Error compressing image:", error);
-    // Return original file if compression fails
-    return imageFile;
+    
+    // Check if we should still try to upload original (for small images)
+    if (imageFile.size < 2 * 1024 * 1024) { // Less than 2MB
+      console.log('Compression failed but image is small enough to upload uncompressed');
+      return imageFile;
+    }
+    
+    // Otherwise propagate the error
+    throw new Error(
+      error instanceof Error 
+        ? `Image processing failed: ${error.message}`
+        : 'Image processing failed. Please try a different image or check your connection.'
+    );
   }
 }
 
@@ -50,6 +86,23 @@ export async function processAudio(audioFile: File): Promise<File> {
   console.log("AUDIO PROCESSING: Starting for", audioFile.name);
   console.log("AUDIO PROCESSING: Original size:", Math.round(audioFile.size / 1024), "KB");
   console.log("AUDIO PROCESSING: Original type:", audioFile.type);
+  
+  // Validate input file
+  if (!audioFile || !(audioFile instanceof File)) {
+    console.error('Invalid file provided to processAudio');
+    throw new Error('Invalid audio file');
+  }
+  
+  if (!audioFile.type.startsWith('audio/')) {
+    console.error('File is not an audio:', audioFile.type);
+    throw new Error('File format error: Please upload an audio file');
+  }
+  
+  // Check file size limit (20MB for audio)
+  if (audioFile.size > 20 * 1024 * 1024) {
+    console.error('Audio too large:', Math.round(audioFile.size / (1024 * 1024)), 'MB');
+    throw new Error('File size error: Maximum audio size is 20MB');
+  }
   
   try {
     // If it's already a WebM or Opus format, just return it
@@ -78,8 +131,19 @@ export async function processAudio(audioFile: File): Promise<File> {
     return processedFile;
   } catch (error) {
     console.error("AUDIO PROCESSING: Error processing audio:", error);
-    // Return original file if processing fails
-    return audioFile;
+    
+    // For small audio files, just return the original if processing fails
+    if (audioFile.size < 5 * 1024 * 1024) { // Less than 5MB
+      console.log('Processing failed but audio is small enough to upload as-is');
+      return audioFile;
+    }
+    
+    // Otherwise propagate the error
+    throw new Error(
+      error instanceof Error 
+        ? `Audio processing failed: ${error.message}` 
+        : 'Audio processing failed. Please try a different audio file or check your connection.'
+    );
   }
 }
 
